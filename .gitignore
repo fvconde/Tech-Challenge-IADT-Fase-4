@@ -1,0 +1,48 @@
+# ===== Segredos / ambiente =====
+.env
+.env.*
+!.env.example
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# ===== Modelos pesados (nunca versionar) =====
+*.pt
+*.onnx
+*.pth
+*.bin
+*.h5
+models/
+weights/
+
+# ===== Dados reais (LGPD: nunca versionar PHI) =====
+# Mantemos apenas data/samples/ (sintético). Tudo o mais é ignorado.
+data/raw/
+data/processed/
+data/uploads/
+data/output/
+# saida do LocalStorageAdapter em runtime
+data/storage/
+# imagem de demo baixada pelo notebook YOLOv8 (regenerada sob demanda)
+data/samples/demo_yolo.jpg
+*.wav.real
+*.mp4.real
+
+# ===== Relatórios gerados =====
+*.pdf
+!docs/*.pdf
+
+# ===== IDE / SO =====
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

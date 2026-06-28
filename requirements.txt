@@ -1,0 +1,50 @@
+# ============================================================================
+# Dependencias do Tech Challenge Fase 4 (saude da mulher - IA multimodal)
+#
+# Organizado por camada. Para a fatia vertical de AUDIO + NLP (Sessao 1) bastam
+# os grupos "Core", "Audio" e "NLP/Texto". Os grupos pesados (Visao, Sumarizacao)
+# sao instalados sob demanda (ver README).
+#
+# Versoes com ">=" para evitar quebra de instalacao no Python 3.12.
+# ============================================================================
+
+# ----- Core (FastAPI) -----
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9      # upload de arquivos (audio/video)
+pydantic>=2.6
+pydantic-settings>=2.2
+python-dotenv>=1.0
+
+# ----- Audio (transcricao) -----
+SpeechRecognition>=3.10      # recognize_google (default escolhido) - ver nota LGPD
+pydub>=0.25                  # conversao de formatos (requer ffmpeg p/ mp3/m4a)
+
+# ----- NLP / Texto -----
+scikit-learn>=1.4            # TfidfVectorizer + MultinomialNB (classificador)
+numpy>=1.26
+pandas>=2.2
+nltk>=3.8                    # stopwords PT
+
+# ----- Cloud (OPCIONAL - apenas adapters; default e local) -----
+boto3>=1.34                  # S3 (Always-Free) e Comprehend (opcional, demo final)
+
+# ----- Relatorios -----
+reportlab>=4.1               # geracao de PDF de alertas
+
+# ============================================================================
+# GRUPOS PESADOS - instalar sob demanda (descomente quando precisar):
+# ============================================================================
+# ----- Visao (YOLOv8 / video) -----
+# ultralytics>=8.1           # YOLOv8 (puxa torch ~ centenas de MB)
+# opencv-python>=4.9
+# mediapipe>=0.10            # pose
+# deepface>=0.0.90           # emocao facial
+
+# ----- OCR / PDF local (substituto do Textract) -----
+# pdfplumber>=0.11
+# PyMuPDF>=1.24
+# pytesseract>=0.3           # requer binario Tesseract instalado no SO
+
+# ----- Sumarizacao local -----
+# transformers>=4.40         # pipeline distilbart-cnn (puxa torch)
