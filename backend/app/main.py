@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from backend.app.api.routers import audio, fusion, text, video
+from backend.app.api.routers import audio, fusion, laudo, text, video
 from backend.app.core.config import get_settings
 from backend.app.core.logging import configurar_logging
 
@@ -32,6 +32,7 @@ app = FastAPI(
 app.include_router(text.router)
 app.include_router(audio.router)
 app.include_router(video.router)
+app.include_router(laudo.router)
 app.include_router(fusion.router)
 
 
@@ -47,6 +48,8 @@ def raiz() -> dict:
             "nlp": settings.nlp_backend,
             "transcription": settings.transcription_backend,
             "video": settings.video_backend,
+            "ocr": settings.ocr_backend,
+            "summarizer": settings.summarizer_backend,
         },
         "docs": "/docs",
     }

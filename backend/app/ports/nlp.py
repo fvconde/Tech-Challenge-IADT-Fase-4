@@ -134,7 +134,19 @@ class ComprehendAdapter(NlpPort):
         self.client = boto3.client("comprehend", region_name=region)
         self.language = language
 
+    @staticmethod
+    def _truncar(texto: str, limite_bytes: int = 4900) -> str:
+        """
+        Comprehend aceita no maximo 5000 BYTES (UTF-8) por chamada. Cortamos com
+        folga para nunca estourar o limite (e nunca cortar no meio de um byte).
+        """
+        codificado = texto.encode("utf-8")
+        if len(codificado) <= limite_bytes:
+            return texto
+        return codificado[:limite_bytes].decode("utf-8", errors="ignore")
+
     def analisar(self, texto: str) -> NlpResult:  # pragma: no cover - cloud
+        texto = self._truncar(texto)
         sent = self.client.detect_sentiment(Text=texto, LanguageCode=self.language)
         # Comprehend devolve POSITIVE/NEGATIVE/NEUTRAL/MIXED + scores
         mapa = {"POSITIVE": "positivo", "NEGATIVE": "negativo",

@@ -38,17 +38,20 @@ reportlab>=4.1               # geracao de PDF de alertas
 ultralytics>=8.1             # YOLOv8 (deteccao de objetos)
 opencv-python>=4.9           # leitura de frames de video (cv2)
 
+# ----- Laudos / documentos (Sessao 3) - OCR local, SEM Textract -----
+pdfplumber>=0.11             # extracao de texto de PDF (default)
+PyMuPDF>=1.24                # fallback de extracao + rasterizacao p/ OCR
+# pytesseract>=0.3           # OCR de PDF imagem (requer binario Tesseract no SO)
+
+# ----- Sumarizacao local (Sessao 3) -----
+# transformers puxa torch (ja vem com ultralytics). distilbart baixa ~1GB na 1a vez.
+# Use SUMMARIZER_BACKEND=extractive para nao baixar nada.
+transformers>=4.40           # pipeline distilbart-cnn
+rouge-score>=0.1.2           # avaliacao ROUGE da sumarizacao (script)
+
 # ============================================================================
 # GRUPOS PESADOS - instalar sob demanda (descomente quando precisar):
 # ============================================================================
 # ----- Visao adicional (proximas sessoes) -----
 # mediapipe>=0.10            # pose
 # deepface>=0.0.90           # emocao facial
-
-# ----- OCR / PDF local (substituto do Textract) -----
-# pdfplumber>=0.11
-# PyMuPDF>=1.24
-# pytesseract>=0.3           # requer binario Tesseract instalado no SO
-
-# ----- Sumarizacao local -----
-# transformers>=4.40         # pipeline distilbart-cnn (puxa torch)

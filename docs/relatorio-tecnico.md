@@ -6,7 +6,7 @@
 ## 1. Visão geral da solução
 
 IA multimodal de **apoio à decisão clínica** em saúde e segurança da mulher. Processa
-**texto, áudio e vídeo** para identificar precocemente sinais de risco e
+**texto, áudio, vídeo e laudos (PDF)** para identificar precocemente sinais de risco e
 **gerar alertas para a equipe especializada** — sem emitir diagnóstico.
 
 Funcionalidades escolhidas (≥ 2 exigidas): **áudio**, **vídeo (YOLOv8)** e **nuvem (opcional)**.
@@ -19,7 +19,8 @@ bem-estar psicológico, uso de nuvem para ampliar capacidade.
 TEXTO  --> LocalNlpAdapter (sentimento+entidades) ----\
 ÁUDIO  --> TranscriptionPort --> texto ---------------> categorias de risco (texto) --\
            (recognize_google)                                                          \
-                                                                                        > FUSÃO
+LAUDO  --> OcrPort (pdfplumber) --> texto + Summarizer -> categorias de risco (laudo) --> FUSÃO
+           (PDF, 100% local)                                                            /   |
 VÍDEO  --> VideoPort (YOLOv8) --> detecções COCO --> regras de risco --> categorias ---/   |
                                   (knife/scissors)   (pós-processamento)   (vídeo)          v
                                                                           nível de alerta + ação
@@ -27,8 +28,9 @@ VÍDEO  --> VideoPort (YOLOv8) --> detecções COCO --> regras de risco --> cate
 ```
 
 A **fusão** (`services/fusion`) combina as categorias de **todas** as modalidades em um
-alerta único. Endpoints: `/api/text/analyze`, `/api/audio/analyze`, `/api/video/analyze`
-e `/api/fusion/analyze` (texto + vídeo juntos). Tudo roda **100% local** por padrão.
+alerta único. Endpoints: `/api/text/analyze`, `/api/audio/analyze`, `/api/video/analyze`,
+`/api/laudo/analyze` e `/api/fusion/analyze` (texto + vídeo + laudo juntos). Tudo roda
+**100% local** por padrão; a nuvem (AWS) é opcional.
 
 ## 3. Modelos e técnicas por tipo de dado
 
@@ -39,6 +41,8 @@ e `/api/fusion/analyze` (texto + vídeo juntos). Tudo roda **100% local** por pa
 | Texto      | Extração de entidades (regex)             | (próprio)             | ✅     |
 | Áudio      | Transcrição fala→texto                     | SpeechRecognition (recognize_google) | ⚠️ envia ao Google |
 | Vídeo      | Detecção de objetos                        | ultralytics (YOLOv8n) | ✅     |
+| Laudo      | Extração de texto de PDF (OCR)             | pdfplumber / PyMuPDF / pytesseract | ✅ (sem Textract) |
+| Laudo      | Sumarização abstrativa                     | transformers (distilbart-cnn) | ✅ |
 | Nuvem (opc)| Sentimento/entidades                       | Amazon Comprehend     | ☁️     |
 | Nuvem (opc)| Armazenamento                              | Amazon S3             | ☁️     |
 
@@ -55,6 +59,31 @@ e `/api/fusion/analyze` (texto + vídeo juntos). Tudo roda **100% local** por pa
   default 15) via `cv2.VideoCapture`, para reduzir custo. Imagens são 1 inferência.
 - **Score visual:** maior confiança entre as detecções-foco; evidências no formato
   `"knife (conf 0.82, frame 30)"` (rastreabilidade).
+
+## 4b. Modelo de documento (laudo): OCR + sumarização
+
+- **Extração de texto (OcrPort → LocalOcrAdapter):** cascata **100% local**
+  `pdfplumber` (default) → `PyMuPDF` (fallback) → `pytesseract` (OCR, só se o PDF for
+  imagem/escaneado). **NUNCA Textract** (bloqueado no Free Plan). O laudo extraído passa
+  pelo **mesmo** léxico + classificador do texto, virando a modalidade `laudo` na fusão.
+- **Sumarização (SummarizerPort):**
+  - `LocalSummarizerAdapter` — abstrativa com **distilbart-cnn** (`transformers`,
+    `AutoModelForSeq2SeqLM`). Default.
+  - `ExtractiveSummarizerAdapter` — extrativa (primeiras frases), instantânea, sem
+    download. Usada nos testes e como alternativa leve (`SUMMARIZER_BACKEND=extractive`).
+- **Avaliação ROUGE** (`scripts/avaliar_rouge.py`): resumo do distilbart vs. um resumo
+  de referência sintético (`data/samples/laudo_exemplo_resumo_ref.txt`).
+
+  | Métrica  | F1     |
+  |----------|--------|
+  | ROUGE-1  | 0,350  |
+  | ROUGE-2  | 0,103  |
+  | ROUGE-L  | 0,300  |
+
+  (Medido no laudo sintético `laudo_exemplo.txt` vs. `laudo_exemplo_resumo_ref.txt`.)
+
+  > Nota: distilbart-cnn é treinado em **inglês** (CNN/DailyMail); em português o resumo é
+  > aproximado e o ROUGE tende a ser modesto. O número serve de baseline reprodutível.
 
 ## 5. Categorias de risco e regra de fusão
 
@@ -92,23 +121,37 @@ carrega as **evidências** que o motivaram.
   (`knife`/`scissors` → `objeto_suspeito_automutilacao` → alerta **alto**). Para um demo
   "alto" com modelo real, usar um clipe/imagem contendo faca ou tesoura.
 
-**Fusão** (`/api/fusion/analyze`): texto de violência + vídeo com `knife` →
-modalidades `["texto","video"]`, categorias `violencia_domestica` + `objeto_suspeito_automutilacao`,
-nível **alto**.
+**Laudo** (smoke real do `LocalOcrAdapter` no PDF sintético `laudo_exemplo.pdf`):
 
-**Testes:** 20 casos automatizados passando (`pytest backend/tests`).
+- OCR: `pdfplumber`, 1 página, sem precisar de OCR de imagem.
+- Risco: `ansiedade` (1.0) + `depressao_pos_parto` (0.333), sentimento negativo → **alto**.
+- Resumo gerado e devolvido na resposta.
+
+**Fusão** (`/api/fusion/analyze`):
+- texto de violência + vídeo com `knife` → `["texto","video"]`,
+  `violencia_domestica` + `objeto_suspeito_automutilacao`, **alto**.
+- texto de violência + laudo de pós-parto → `["texto","laudo"]`, **alto**.
+
+**Testes:** 28 casos automatizados passando (`pytest backend/tests`).
 
 ## 7. Conformidade e limitações
 
 - Sem PHI; apenas dados sintéticos (LGPD). Ver [decisoes-arquiteturais.md](decisoes-arquiteturais.md).
 - `recognize_google` envia áudio a terceiros — usar só material sintético; backend
   offline previsto como melhoria.
+- **Amazon Comprehend** (opcional, `NLP_BACKEND=comprehend`) **envia o texto do laudo a um
+  serviço de terceiros (AWS)** e consome crédito. Usar **apenas com texto sintético**, em
+  pouquíssimas chamadas, e só na demo final. O default é local (offline).
+- Extração de laudo é **100% local** (pdfplumber/PyMuPDF/pytesseract) — Textract não é usado.
+- distilbart-cnn é treinado em inglês; resumo em português é aproximado.
 - Léxico/classificador são propositais e **explicáveis**, mas têm cobertura limitada;
   não substituem avaliação profissional.
-- Vídeo usa modelo pré-treinado em classes COCO (proxy). As classes-foco são uma
-  aproximação; um modelo fine-tuned em objetos clínicos é melhoria futura.
+- Vídeo usa modelo pré-treinado em classes COCO (proxy). Fine-tuning é melhoria futura.
 
 ## 8. Como reproduzir
 
-Ver [README.md](../README.md) (setup, execução da API, testes e notebook). Para o vídeo:
-`python scripts/gerar_video_exemplo.py` e depois `POST /api/video/analyze`.
+Ver [README.md](../README.md) (setup, execução da API, testes). Atalhos:
+- Vídeo: `python scripts/gerar_video_exemplo.py` → `POST /api/video/analyze`.
+- Laudo: `python scripts/gerar_laudo_exemplo.py` → `POST /api/laudo/analyze`.
+- ROUGE: `python scripts/avaliar_rouge.py`.
+- Nuvem (opt-in, precisa de credenciais): `RUN_AWS_SMOKE=1 python scripts/smoke_aws.py`.

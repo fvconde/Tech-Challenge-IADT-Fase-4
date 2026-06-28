@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     nlp_backend: str = "local"                      # local | comprehend
     transcription_backend: str = "recognize_google" # recognize_google | mock
     video_backend: str = "local"                    # local | mock
+    ocr_backend: str = "local"                      # local | mock (sem Textract!)
+    summarizer_backend: str = "distilbart"          # distilbart | extractive
 
     # ----- Caminhos / idioma -----
     local_storage_dir: str = "data/storage"
@@ -45,6 +47,10 @@ class Settings(BaseSettings):
     def video_focus_classes_list(self) -> list[str]:
         """Converte a string 'knife,scissors' em ['knife', 'scissors']."""
         return [c.strip() for c in self.video_focus_classes.split(",") if c.strip()]
+
+    # ----- Sumarizacao -----
+    # Modelo HF para o backend distilbart (treinado em ingles; ver relatorio).
+    summarizer_model: str = "sshleifer/distilbart-cnn-12-6"
 
     # ----- AWS (opcional; vazio = nao usar nuvem) -----
     aws_region: str = "us-east-1"

@@ -87,15 +87,37 @@ Google**. Portanto:
 - **Melhoria futura:** fine-tuning em objetos clínicos reais; adicionar pose (MediaPipe)
   e emoção facial (DeepFace) como sinais visuais extras na mesma fusão.
 
-## 6. Segredos e dados
+## 6. Laudos (OCR) e sumarização
+
+- **OCR sem Textract.** `LocalOcrAdapter` extrai texto em cascata **pdfplumber → PyMuPDF →
+  pytesseract** (este último só para PDFs imagem). Reafirma a decisão do CLAUDE.md: Textract
+  está bloqueado no Free Plan e **não é usado**. Imports lazy; `OCR_BACKEND=mock` para testes.
+- **Sumarização local.** `LocalSummarizerAdapter` usa **distilbart-cnn** via
+  `AutoModelForSeq2SeqLM` (não `pipeline('summarization')`, cujo alias mudou no
+  transformers v5). Default. `ExtractiveSummarizerAdapter` (sem download) é a alternativa
+  leve para testes/CI.
+- **Limitação assumida:** distilbart-cnn é treinado em inglês → resumo em PT é aproximado.
+  Avaliamos com ROUGE (`scripts/avaliar_rouge.py`) contra um resumo de referência sintético.
+
+## 7. Nuvem (de-risco): smoke isolado e opt-in
+
+- Os adapters `S3StorageAdapter` e `ComprehendAdapter` (boto3 lazy) já existem; o default
+  segue **local**. Para confirmar se a conta AWS permite os serviços **antes da demo**, há
+  `scripts/smoke_aws.py`: sobe o laudo sintético no S3 e chama o Comprehend **uma vez**.
+- **Opt-in e fora do pytest:** só roda com `RUN_AWS_SMOKE=1` + credenciais no `.env`. Os
+  testes do projeto passam **sem AWS** (a lógica de mapeamento é testada com clients falsos).
+- **Conformidade:** Comprehend envia o texto a um terceiro (AWS) e consome crédito → usar
+  **só com laudo sintético**, poucas chamadas. Documentado no relatório.
+
+## 8. Segredos e dados
 
 - `.env` está no `.gitignore`; só `.env.example` é versionado.
 - `.gitignore` cobre modelos pesados (`*.pt`, `*.onnx`), `data/` real, `venv/`, e os
-  exemplos gerados (`data/samples/*.mp4`, `data/samples/demo_yolo.jpg`).
-- Apenas `data/samples/` (texto sintético) é versionado; vídeos/imagens de exemplo são
-  **gerados sob demanda** (`scripts/gerar_video_exemplo.py`).
+  exemplos gerados (`data/samples/*.mp4`, `*.pdf`, `demo_yolo.jpg`).
+- Apenas `data/samples/` (texto sintético) é versionado; vídeos/PDFs de exemplo são
+  **gerados sob demanda** (`scripts/gerar_video_exemplo.py`, `scripts/gerar_laudo_exemplo.py`).
 
-## 7. Ambiente
+## 9. Ambiente
 
 - O CLAUDE.md prevê Python 3.11; a máquina local usa **Python 3.12** (compatível).
   `requirements.txt` usa faixas `>=` para evitar quebra de instalação no 3.12.

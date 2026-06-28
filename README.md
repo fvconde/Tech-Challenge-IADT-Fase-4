@@ -134,6 +134,49 @@ disponível para inspeção visual da detecção.
 
 ---
 
+## Laudos (PDF): OCR + sumarização
+
+Extração de texto de PDF **100% local** (pdfplumber → PyMuPDF → pytesseract), **sem
+Textract**. O laudo entra na mesma fusão como modalidade `laudo`.
+
+```powershell
+# 1) gerar um PDF de laudo sintetico (sem PHI)
+python scripts/gerar_laudo_exemplo.py
+
+# 2) analisar o laudo (extrai texto -> risco -> resumo)
+curl.exe -F "arquivo=@data/samples/laudo_exemplo.pdf" http://127.0.0.1:8000/api/laudo/analyze
+
+# 3) FUSAO com 3 modalidades: texto + video + laudo
+curl.exe -F "texto=tenho medo dele" -F "video_arquivo=@data/samples/video_exemplo.mp4" -F "laudo_arquivo=@data/samples/laudo_exemplo.pdf" http://127.0.0.1:8000/api/fusion/analyze
+```
+
+**Sumarização:** default `distilbart-cnn` (`SUMMARIZER_BACKEND=distilbart`, baixa ~1GB na
+1ª vez). Para não baixar nada, use `SUMMARIZER_BACKEND=extractive`. Avaliação ROUGE:
+
+```powershell
+python scripts/avaliar_rouge.py     # ROUGE-1/2/L do resumo vs. referência sintética
+```
+
+---
+
+## Nuvem AWS (opcional, de-risco da demo)
+
+Os adapters de nuvem (`S3StorageAdapter`, `ComprehendAdapter`) são **opcionais**; o default
+é local. Para confirmar se sua conta AWS permite os serviços **antes da demo**, há um smoke
+**opt-in** (não roda no pytest):
+
+```powershell
+# configure credenciais e bucket no .env (NUNCA commitar):
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET_NAME
+$env:RUN_AWS_SMOKE=1
+python scripts/smoke_aws.py     # sobe o laudo no S3 + 1 chamada ao Comprehend
+```
+
+> ⚠️ **Conformidade:** o Comprehend **envia o texto a um terceiro (AWS)** e consome crédito.
+> Use **apenas o laudo sintético**, poucas chamadas. Default permanece local/offline.
+
+---
+
 ## Testes
 
 ```powershell
@@ -147,10 +190,12 @@ pytest backend/tests -q
 
 Ver seção 7 do [CLAUDE.md](CLAUDE.md). Resumo:
 
-- `backend/app/ports/` — interfaces + adapters local/cloud
-- `backend/app/services/` — lógica por modalidade (audio, text, video, fusion)
-- `backend/app/api/routers/` — endpoints REST
-- `notebooks/` — demos (YOLOv8, áudio, NLP)
+- `backend/app/ports/` — interfaces + adapters local/cloud (storage, nlp, transcription,
+  video, ocr, summarizer)
+- `backend/app/services/` — lógica por modalidade (audio, text/document, video, fusion)
+- `backend/app/api/routers/` — endpoints REST (text, audio, video, laudo, fusion)
+- `scripts/` — geradores de exemplo (vídeo, laudo), ROUGE e smoke AWS
+- `notebooks/` — demos (YOLOv8, NLP)
 - `data/samples/` — dados sintéticos (sem PHI)
 - `docs/` — relatório técnico e decisões arquiteturais
 
@@ -159,9 +204,10 @@ Ver seção 7 do [CLAUDE.md](CLAUDE.md). Resumo:
 ## Roadmap (próximas sessões)
 
 - [x] Vídeo: YOLOv8 integrado ao backend (`/api/video/analyze`) via `VideoPort`
-- [x] Fusão multimodal (texto + vídeo → alerta único) em `/api/fusion/analyze`
-- [ ] Vídeo: somar DeepFace (emoção) + MediaPipe (pose) como sinais na mesma fusão
-- [ ] OCR local de laudos (pdfplumber/PyMuPDF) — substituto do Textract
-- [ ] Sumarização local (transformers `distilbart`)
-- [ ] Adapters de nuvem (S3, Comprehend, Bedrock) exercitados na demo final
+- [x] Fusão multimodal (texto + vídeo + laudo → alerta único) em `/api/fusion/analyze`
+- [x] OCR local de laudos (pdfplumber/PyMuPDF/pytesseract) — substituto do Textract
+- [x] Sumarização local (transformers `distilbart`) + avaliação ROUGE
+- [x] Adapters de nuvem (S3 + Comprehend) com smoke opt-in (`scripts/smoke_aws.py`)
+- [ ] Vídeo: somar DeepFace (emoção) + MediaPipe (pose) na mesma fusão
+- [ ] Bedrock (sumarização/agente) na demo final, se sobrar crédito
 - [ ] Frontend Angular

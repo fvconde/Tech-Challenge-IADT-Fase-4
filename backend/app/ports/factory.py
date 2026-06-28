@@ -20,9 +20,21 @@ from __future__ import annotations
 import logging
 
 from backend.app.core.config import get_settings
-from backend.app.ports.base import NlpPort, StoragePort, TranscriptionPort, VideoPort
+from backend.app.ports.base import (
+    NlpPort,
+    OcrPort,
+    StoragePort,
+    SummarizerPort,
+    TranscriptionPort,
+    VideoPort,
+)
 from backend.app.ports.nlp import ComprehendAdapter, LocalNlpAdapter
+from backend.app.ports.ocr import LocalOcrAdapter, MockOcrAdapter
 from backend.app.ports.storage import LocalStorageAdapter, S3StorageAdapter
+from backend.app.ports.summarizer import (
+    ExtractiveSummarizerAdapter,
+    LocalSummarizerAdapter,
+)
 from backend.app.ports.transcription import (
     MockTranscriptionAdapter,
     RecognizeGoogleAdapter,
@@ -68,3 +80,21 @@ def get_video() -> VideoPort:
         return MockVideoAdapter()
     logger.info("VideoPort -> LocalVideoAdapter (YOLOv8 %s)", settings.video_model)
     return LocalVideoAdapter(modelo=settings.video_model)
+
+
+def get_ocr() -> OcrPort:
+    settings = get_settings()
+    if settings.ocr_backend == "mock":
+        logger.info("OcrPort -> MockOcrAdapter (offline)")
+        return MockOcrAdapter()
+    logger.info("OcrPort -> LocalOcrAdapter (pdfplumber/PyMuPDF/pytesseract)")
+    return LocalOcrAdapter()
+
+
+def get_summarizer() -> SummarizerPort:
+    settings = get_settings()
+    if settings.summarizer_backend == "extractive":
+        logger.info("SummarizerPort -> ExtractiveSummarizerAdapter (leve)")
+        return ExtractiveSummarizerAdapter()
+    logger.info("SummarizerPort -> LocalSummarizerAdapter (%s)", settings.summarizer_model)
+    return LocalSummarizerAdapter(modelo=settings.summarizer_model)

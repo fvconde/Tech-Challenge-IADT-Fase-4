@@ -86,6 +86,15 @@ class VideoAnalysisResult:
     classes_foco: list[str] = field(default_factory=list)  # classes monitoradas
 
 
+@dataclass
+class OcrResult:
+    """Resultado da extracao de texto de um documento (PDF de laudo)."""
+    texto: str
+    paginas: int = 0             # quantas paginas foram processadas
+    backend: str = "local"       # ex.: "pdfplumber", "pymupdf", "pytesseract"
+    usou_ocr: bool = False       # True se precisou de OCR (PDF imagem/escaneado)
+
+
 # ---------------------------------------------------------------------------
 # Ports (interfaces abstratas)
 # ---------------------------------------------------------------------------
@@ -138,3 +147,19 @@ class VideoPort(ABC):
         - amostragem: em videos, processa 1 frame a cada N (reduz custo).
         - conf: confianca minima para considerar uma deteccao.
         """
+
+
+class OcrPort(ABC):
+    """Extracao de texto de documentos (PDF de laudo). NUNCA usa Textract."""
+
+    @abstractmethod
+    def extrair_texto(self, caminho_pdf: str) -> OcrResult:
+        """Recebe o caminho de um PDF e devolve o texto extraido."""
+
+
+class SummarizerPort(ABC):
+    """Sumarizacao de texto (resumo do laudo)."""
+
+    @abstractmethod
+    def resumir(self, texto: str) -> str:
+        """Recebe um texto longo e devolve um resumo curto."""
