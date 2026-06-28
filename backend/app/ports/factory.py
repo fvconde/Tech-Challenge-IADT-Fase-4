@@ -20,13 +20,14 @@ from __future__ import annotations
 import logging
 
 from backend.app.core.config import get_settings
-from backend.app.ports.base import NlpPort, StoragePort, TranscriptionPort
+from backend.app.ports.base import NlpPort, StoragePort, TranscriptionPort, VideoPort
 from backend.app.ports.nlp import ComprehendAdapter, LocalNlpAdapter
 from backend.app.ports.storage import LocalStorageAdapter, S3StorageAdapter
 from backend.app.ports.transcription import (
     MockTranscriptionAdapter,
     RecognizeGoogleAdapter,
 )
+from backend.app.ports.video import LocalVideoAdapter, MockVideoAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -58,3 +59,12 @@ def get_transcription() -> TranscriptionPort:
         return MockTranscriptionAdapter()
     logger.info("TranscriptionPort -> RecognizeGoogleAdapter (Google Web Speech)")
     return RecognizeGoogleAdapter()
+
+
+def get_video() -> VideoPort:
+    settings = get_settings()
+    if settings.video_backend == "mock":
+        logger.info("VideoPort -> MockVideoAdapter (offline)")
+        return MockVideoAdapter()
+    logger.info("VideoPort -> LocalVideoAdapter (YOLOv8 %s)", settings.video_model)
+    return LocalVideoAdapter(modelo=settings.video_model)

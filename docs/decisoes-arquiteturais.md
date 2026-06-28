@@ -70,13 +70,32 @@ Google**. Portanto:
 - **Melhoria futura:** adicionar `VoskAdapter` ou `FasterWhisperAdapter` (transcrição
   100% local, sem envio externo). Já previsto na arquitetura — basta um novo adapter.
 
-## 5. Segredos e dados
+## 5. Vídeo (YOLOv8): modelo pré-treinado, sem treino customizado
+
+**Decisão:** usar YOLOv8n **pré-treinado** (classes COCO), **sem fine-tuning**.
+
+- **Por quê:** não há dataset clínico rotulado disponível e treinar custaria tempo/recursos
+  (restrições de custo e prazo). O modelo pré-treinado é suficiente para demonstrar a
+  pipeline ponta a ponta.
+- **Como especializamos sem treinar:** a customização fica na **camada de regras de risco**
+  (`services/video/risk_rules.py`), não no modelo. Classes COCO funcionam como **proxy**
+  (ex.: `knife`, `scissors` → `objeto_suspeito_automutilacao`). As classes-foco são
+  **configuráveis** por env (`VIDEO_FOCUS_CLASSES`), então mudar o alvo não exige retreino.
+- **Custo zero / offline:** roda 100% local (`VIDEO_BACKEND=local`). Há `MockVideoAdapter`
+  (`VIDEO_BACKEND=mock`) para testes/CI sem carregar o modelo. O import de `ultralytics`/`cv2`
+  é lazy: o app sobe mesmo sem essas libs.
+- **Melhoria futura:** fine-tuning em objetos clínicos reais; adicionar pose (MediaPipe)
+  e emoção facial (DeepFace) como sinais visuais extras na mesma fusão.
+
+## 6. Segredos e dados
 
 - `.env` está no `.gitignore`; só `.env.example` é versionado.
-- `.gitignore` cobre modelos pesados (`*.pt`, `*.onnx`), `data/` real, `venv/`.
-- Apenas `data/samples/` (sintético) é versionado.
+- `.gitignore` cobre modelos pesados (`*.pt`, `*.onnx`), `data/` real, `venv/`, e os
+  exemplos gerados (`data/samples/*.mp4`, `data/samples/demo_yolo.jpg`).
+- Apenas `data/samples/` (texto sintético) é versionado; vídeos/imagens de exemplo são
+  **gerados sob demanda** (`scripts/gerar_video_exemplo.py`).
 
-## 6. Ambiente
+## 7. Ambiente
 
 - O CLAUDE.md prevê Python 3.11; a máquina local usa **Python 3.12** (compatível).
   `requirements.txt` usa faixas `>=` para evitar quebra de instalação no 3.12.

@@ -15,7 +15,13 @@ O score final por categoria fica em [0, 1] (saturado). Um classificador estatist
 from __future__ import annotations
 
 import unicodedata
-from dataclasses import dataclass
+
+# DeteccaoCategoria mora na camada de dominio (ports/base.py) porque e compartilhada
+# por texto, audio e video. Reexportamos aqui para nao quebrar imports existentes.
+from backend.app.ports.base import DeteccaoCategoria
+
+__all__ = ["DeteccaoCategoria", "normalizar", "detectar_categorias",
+           "LEXICO_RISCO", "PESO_SEVERIDADE"]
 
 
 def normalizar(texto: str) -> str:
@@ -53,19 +59,15 @@ LEXICO_RISCO: dict[str, list[str]] = {
 }
 
 # Peso de severidade por categoria (influencia o nivel de alerta na fusao).
+# Inclui tambem categorias que vem de outras modalidades (ex.: video), pois a
+# fusao trata todas como o mesmo tipo DeteccaoCategoria.
 PESO_SEVERIDADE: dict[str, float] = {
     "violencia_domestica": 1.0,   # qualquer indicio ja exige atencao maxima
+    "objeto_suspeito_automutilacao": 1.0,  # categoria de VIDEO (proxy automutilacao)
     "depressao_pos_parto": 0.9,
     "ansiedade": 0.6,
     "fadiga_hormonal": 0.5,
 }
-
-
-@dataclass
-class DeteccaoCategoria:
-    categoria: str
-    score: float
-    evidencias: list[str]
 
 
 def detectar_categorias(texto: str) -> list[DeteccaoCategoria]:

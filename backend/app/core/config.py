@@ -27,10 +27,24 @@ class Settings(BaseSettings):
     storage_backend: str = "local"                  # local | s3
     nlp_backend: str = "local"                      # local | comprehend
     transcription_backend: str = "recognize_google" # recognize_google | mock
+    video_backend: str = "local"                    # local | mock
 
     # ----- Caminhos / idioma -----
     local_storage_dir: str = "data/storage"
     transcription_language: str = "pt-BR"
+
+    # ----- Video (YOLOv8) -----
+    video_model: str = "yolov8n.pt"                 # modelo pre-treinado (custo zero)
+    # Classes COCO monitoradas como proxy de "objeto suspeito de automutilacao".
+    # Configuravel: separe por virgula no .env (ex.: "knife,scissors").
+    video_focus_classes: str = "knife,scissors"
+    video_frame_sample: int = 15                    # analisa 1 frame a cada N
+    video_conf_threshold: float = 0.25              # confianca minima da deteccao
+
+    @property
+    def video_focus_classes_list(self) -> list[str]:
+        """Converte a string 'knife,scissors' em ['knife', 'scissors']."""
+        return [c.strip() for c in self.video_focus_classes.split(",") if c.strip()]
 
     # ----- AWS (opcional; vazio = nao usar nuvem) -----
     aws_region: str = "us-east-1"

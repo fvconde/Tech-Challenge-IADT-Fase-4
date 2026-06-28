@@ -19,7 +19,7 @@ from backend.app.models.schemas import (
     EntidadeSchema,
     SentimentoSchema,
 )
-from backend.app.ports.base import NlpPort
+from backend.app.ports.base import NlpPort, NlpResult
 from backend.app.services.fusion.alerts import avaliar_alerta
 from backend.app.services.text.classifier import prever_categoria
 from backend.app.services.text.risk_lexicon import (
@@ -31,8 +31,17 @@ from backend.app.services.text.risk_lexicon import (
 LIMIAR_CLASSIFICADOR = 0.55
 
 
-def analisar_texto(texto: str, nlp: NlpPort) -> AnaliseRiscoResponse:
-    """Executa a analise completa de risco sobre um texto."""
+def extrair_categorias_e_nlp(
+    texto: str, nlp: NlpPort
+) -> tuple[list[DeteccaoCategoria], NlpResult]:
+    """
+    Devolve as PECAS BRUTAS da analise de texto (sem montar o alerta final):
+      - lista de categorias de risco (lexico + classificador);
+      - resultado de NLP (sentimento + entidades).
+
+    A fusao multimodal reusa esta funcao para pegar as categorias do texto e
+    combina-las com as do video antes de decidir o alerta.
+    """
     # 1) sentimento + entidades (via porta - local ou cloud)
     nlp_result = nlp.analisar(texto)
 
@@ -44,7 +53,14 @@ def analisar_texto(texto: str, nlp: NlpPort) -> AnaliseRiscoResponse:
     if cat_prevista and prob >= LIMIAR_CLASSIFICADOR:
         categorias = _mesclar_classificador(categorias, cat_prevista, prob)
 
-    # 4) fusao -> nivel de alerta + acao
+    return categorias, nlp_result
+
+
+def analisar_texto(texto: str, nlp: NlpPort) -> AnaliseRiscoResponse:
+    """Executa a analise completa de risco sobre um texto."""
+    categorias, nlp_result = extrair_categorias_e_nlp(texto, nlp)
+
+    # fusao -> nivel de alerta + acao
     nivel, acao = avaliar_alerta(categorias, nlp_result.sentimento)
 
     return AnaliseRiscoResponse(

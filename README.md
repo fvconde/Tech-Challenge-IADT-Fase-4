@@ -108,15 +108,29 @@ Resposta (resumida):
 
 ---
 
-## YOLOv8 (vídeo) — smoke test
+## Vídeo (YOLOv8) e fusão multimodal
 
-O requisito de vídeo (YOLOv8) é demonstrado em
-[notebooks/01_yolov8_demo.ipynb](notebooks/01_yolov8_demo.ipynb).
+O vídeo agora está **integrado ao backend** (não só no notebook). YOLOv8n pré-treinado,
+local, com a "customização" nas **regras de risco** (classes-foco configuráveis).
 
 ```powershell
-pip install ultralytics opencv-python    # grupo pesado (puxa torch ~ centenas de MB)
-jupyter notebook notebooks/01_yolov8_demo.ipynb
+pip install ultralytics opencv-python    # já no requirements (puxa torch ~ centenas de MB)
+
+# 1) gerar um vídeo sintético de exemplo (sem PHI)
+python scripts/gerar_video_exemplo.py
+
+# 2) analisar só o vídeo
+curl.exe -F "arquivo=@data/samples/video_exemplo.mp4" http://127.0.0.1:8000/api/video/analyze
+
+# 3) FUSÃO multimodal: texto + vídeo num alerta único
+curl.exe -F "texto=tenho medo dele, ele me empurrou" -F "video_arquivo=@data/samples/video_exemplo.mp4" http://127.0.0.1:8000/api/fusion/analyze
 ```
+
+A detecção usa classes COCO genéricas; as **regras de risco** (`VIDEO_FOCUS_CLASSES`,
+default `knife,scissors`) decidem o que vira `objeto_suspeito_automutilacao`. Para um
+demo de alerta **alto** com modelo real, use um clipe/imagem contendo faca ou tesoura.
+O notebook [notebooks/01_yolov8_demo.ipynb](notebooks/01_yolov8_demo.ipynb) segue
+disponível para inspeção visual da detecção.
 
 ---
 
@@ -144,9 +158,10 @@ Ver seção 7 do [CLAUDE.md](CLAUDE.md). Resumo:
 
 ## Roadmap (próximas sessões)
 
-- [ ] Vídeo: integrar YOLOv8 + DeepFace + MediaPipe nos endpoints (`services/video`)
+- [x] Vídeo: YOLOv8 integrado ao backend (`/api/video/analyze`) via `VideoPort`
+- [x] Fusão multimodal (texto + vídeo → alerta único) em `/api/fusion/analyze`
+- [ ] Vídeo: somar DeepFace (emoção) + MediaPipe (pose) como sinais na mesma fusão
 - [ ] OCR local de laudos (pdfplumber/PyMuPDF) — substituto do Textract
 - [ ] Sumarização local (transformers `distilbart`)
-- [ ] Fusão multimodal completa (áudio + vídeo + texto → alerta único)
 - [ ] Adapters de nuvem (S3, Comprehend, Bedrock) exercitados na demo final
 - [ ] Frontend Angular

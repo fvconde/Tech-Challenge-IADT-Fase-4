@@ -1,12 +1,23 @@
 """
 Fusao de sinais -> nivel de alerta + acao recomendada.
 
-Nesta Sessao 1 a "fusao" combina os sinais de TEXTO (categorias de risco do lexico
-+ sentimento). Em sessoes futuras esta mesma camada recebera tambem sinais de VIDEO
-(YOLOv8/DeepFace/pose) para um alerta multimodal unico.
+A fusao trabalha SEMPRE sobre uma lista de DeteccaoCategoria, NAO importa de qual
+modalidade ela veio. Isso e proposital: texto/audio e video produzem o mesmo tipo
+(DeteccaoCategoria), entao combina-los e so juntar listas. Assim a mesma logica de
+alerta serve para 1 modalidade ou para varias (alerta multimodal unico).
 
 Regra de ouro do projeto: o sistema RECOMENDA cuidado / gera alerta para a equipe.
 NUNCA diagnostica. Por isso a saida e "acao_recomendada", nao "diagnostico".
+
+------------------------------------------------------------------------------
+REGRA DE FUSAO MULTIMODAL (documentada tambem no relatorio-tecnico.md):
+1. Junta as categorias de todas as modalidades (texto/audio + video).
+2. Categoria repetida em modalidades diferentes -> mantem o MAIOR score, UNE as
+   evidencias e aplica um BOOST DE CORROBORACAO (+0.15, saturado em 1.0), porque
+   o mesmo risco visto por dois canais e mais confiavel.
+3. Categorias CRITICAS (violencia / objeto suspeito) com qualquer indicio -> ALTO.
+4. Caso geral: nivel pelo maior score ponderado pela severidade da categoria.
+------------------------------------------------------------------------------
 """
 
 from __future__ import annotations
@@ -18,12 +29,23 @@ from backend.app.services.text.risk_lexicon import (
     DeteccaoCategoria,
 )
 
+# Boost aplicado quando a MESMA categoria aparece em 2+ modalidades.
+BOOST_CORROBORACAO = 0.15
+
+# Categorias que, com qualquer indicio, ja exigem alerta ALTO.
+CATEGORIAS_CRITICAS = {"violencia_domestica", "objeto_suspeito_automutilacao"}
+
 # Acao recomendada por categoria (texto para a equipe especializada).
 ACAO_POR_CATEGORIA: dict[str, str] = {
     "violencia_domestica": (
         "ALERTA PRIORITARIO: indicios de violencia domestica. Acionar protocolo "
         "institucional de violencia, oferecer escuta protegida e privada, e acionar "
         "servico social/seguranca conforme fluxo. NAO confrontar acompanhante."
+    ),
+    "objeto_suspeito_automutilacao": (
+        "ALERTA PRIORITARIO: objeto potencialmente perigoso detectado no video "
+        "(proxy de risco de automutilacao). Acionar avaliacao de seguranca e saude "
+        "mental, garantir ambiente seguro e revisar o(s) frame(s) sinalizado(s)."
     ),
     "depressao_pos_parto": (
         "Encaminhar para avaliacao em saude mental perinatal (psicologia/psiquiatria). "
@@ -43,14 +65,62 @@ ACAO_SEM_RISCO = (
 )
 
 
+def combinar_categorias(
+    *listas: list[DeteccaoCategoria],
+) -> list[DeteccaoCategoria]:
+    """
+    Combina varias listas de categorias (uma por modalidade) em uma so.
+
+    Para a mesma categoria vista em modalidades diferentes:
+      - score final = max(scores) + BOOST_CORROBORACAO (saturado em 1.0);
+      - evidencias = uniao das evidencias.
+    Se a categoria aparece em uma unica lista, fica como esta.
+    """
+    # quantas listas (modalidades) mencionaram cada categoria
+    ocorrencias: dict[str, int] = {}
+    combinadas: dict[str, DeteccaoCategoria] = {}
+
+    for lista in listas:
+        # evita contar 2x a mesma categoria dentro da MESMA modalidade
+        categorias_desta_lista: set[str] = set()
+        for det in lista:
+            if det.categoria not in combinadas:
+                # copia para nao mutar o objeto original
+                combinadas[det.categoria] = DeteccaoCategoria(
+                    categoria=det.categoria,
+                    score=det.score,
+                    evidencias=list(det.evidencias),
+                )
+            else:
+                alvo = combinadas[det.categoria]
+                alvo.score = max(alvo.score, det.score)
+                alvo.evidencias.extend(det.evidencias)
+            categorias_desta_lista.add(det.categoria)
+
+        for cat in categorias_desta_lista:
+            ocorrencias[cat] = ocorrencias.get(cat, 0) + 1
+
+    # aplica o boost de corroboracao nas categorias vistas em 2+ modalidades
+    for cat, n in ocorrencias.items():
+        if n >= 2:
+            d = combinadas[cat]
+            d.score = round(min(1.0, d.score + BOOST_CORROBORACAO), 3)
+            d.evidencias.append(f"corroboracao multimodal ({n} modalidades)")
+
+    resultado = list(combinadas.values())
+    resultado.sort(key=lambda d: d.score, reverse=True)
+    return resultado
+
+
 def avaliar_alerta(
     categorias: list[DeteccaoCategoria],
     sentimento: SentimentResult,
 ) -> tuple[NivelAlerta, str]:
     """
-    Decide o nivel de alerta e a acao recomendada.
+    Decide o nivel de alerta e a acao recomendada a partir das categorias (ja
+    combinadas, se multimodal) e do sentimento.
 
-    - Violencia domestica com qualquer indicio -> sempre ALTO.
+    - Categoria critica com qualquer indicio -> sempre ALTO.
     - Caso geral: usa o maior score ponderado pela severidade da categoria.
     - Sem categorias, mas sentimento muito negativo -> MEDIO (acolhimento).
     """
@@ -63,16 +133,18 @@ def avaliar_alerta(
             )
         return NivelAlerta.baixo, ACAO_SEM_RISCO
 
-    # categoria de maior score ponderado pela severidade
     def ponderado(c: DeteccaoCategoria) -> float:
         return c.score * PESO_SEVERIDADE.get(c.categoria, 0.5)
 
+    # categoria de maior score ponderado pela severidade (define a acao "principal")
     top = max(categorias, key=ponderado)
     acao = ACAO_POR_CATEGORIA.get(top.categoria, ACAO_SEM_RISCO)
 
-    # violencia: sempre alto
-    if any(c.categoria == "violencia_domestica" for c in categorias):
-        return NivelAlerta.alto, ACAO_POR_CATEGORIA["violencia_domestica"]
+    # categorias criticas: qualquer indicio -> ALTO (a acao segue a critica de maior peso)
+    criticas = [c for c in categorias if c.categoria in CATEGORIAS_CRITICAS]
+    if criticas:
+        critica_top = max(criticas, key=ponderado)
+        return NivelAlerta.alto, ACAO_POR_CATEGORIA[critica_top.categoria]
 
     risco = ponderado(top)
     if risco >= 0.6:

@@ -32,12 +32,16 @@ boto3>=1.34                  # S3 (Always-Free) e Comprehend (opcional, demo fin
 # ----- Relatorios -----
 reportlab>=4.1               # geracao de PDF de alertas
 
+# ----- Visao (YOLOv8 / video) - usados pelo modulo de video (Sessao 2) -----
+# Pesados (ultralytics puxa torch ~ centenas de MB), mas necessarios para o
+# VIDEO_BACKEND=local. O app sobe sem eles (import lazy) se VIDEO_BACKEND=mock.
+ultralytics>=8.1             # YOLOv8 (deteccao de objetos)
+opencv-python>=4.9           # leitura de frames de video (cv2)
+
 # ============================================================================
 # GRUPOS PESADOS - instalar sob demanda (descomente quando precisar):
 # ============================================================================
-# ----- Visao (YOLOv8 / video) -----
-# ultralytics>=8.1           # YOLOv8 (puxa torch ~ centenas de MB)
-# opencv-python>=4.9
+# ----- Visao adicional (proximas sessoes) -----
 # mediapipe>=0.10            # pose
 # deepface>=0.0.90           # emocao facial
 

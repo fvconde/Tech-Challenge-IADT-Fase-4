@@ -55,6 +55,37 @@ class NlpResult:
     entidades: list[Entidade] = field(default_factory=list)
 
 
+@dataclass
+class DeteccaoCategoria:
+    """
+    Uma categoria de risco detectada, com score e evidencias.
+
+    E o tipo COMUM a todas as modalidades (texto, audio e video). Por isso vive
+    aqui na camada de dominio: a fusao multimodal combina listas deste tipo sem
+    saber de qual modalidade vieram.
+    """
+    categoria: str               # ex.: "ansiedade", "objeto_suspeito_automutilacao"
+    score: float                 # 0.0 .. 1.0 (intensidade dos indicios)
+    evidencias: list[str] = field(default_factory=list)  # rastreabilidade
+
+
+@dataclass
+class DeteccaoVisual:
+    """Uma deteccao de objeto em um frame de video/imagem (YOLOv8)."""
+    classe: str                  # nome da classe COCO (ex.: "knife", "scissors")
+    confianca: float             # 0.0 .. 1.0
+    frame: int = 0               # indice do frame onde apareceu (0 para imagem)
+
+
+@dataclass
+class VideoAnalysisResult:
+    """Resultado da analise de um video/imagem."""
+    deteccoes: list[DeteccaoVisual] = field(default_factory=list)
+    frames_analisados: int = 0   # quantos frames foram efetivamente processados
+    backend: str = "local"       # qual adapter produziu (ex.: "local_yolov8n")
+    classes_foco: list[str] = field(default_factory=list)  # classes monitoradas
+
+
 # ---------------------------------------------------------------------------
 # Ports (interfaces abstratas)
 # ---------------------------------------------------------------------------
@@ -84,3 +115,26 @@ class NlpPort(ABC):
     @abstractmethod
     def analisar(self, texto: str) -> NlpResult:
         """Analisa o texto e devolve sentimento + entidades."""
+
+
+class VideoPort(ABC):
+    """Analise de video/imagem (deteccao de objetos)."""
+
+    @abstractmethod
+    def analisar(
+        self,
+        caminho: str,
+        classes_foco: list[str],
+        amostragem: int = 15,
+        conf: float = 0.25,
+    ) -> VideoAnalysisResult:
+        """
+        Detecta objetos em um arquivo de imagem ou video.
+
+        - caminho: arquivo local (imagem .jpg/.png ou video .mp4/.avi/...).
+        - classes_foco: classes que nos interessam (a deteccao traz todas, mas
+          essas sao as monitoradas pelas regras de risco). Passada adiante para
+          documentacao/contexto no resultado.
+        - amostragem: em videos, processa 1 frame a cada N (reduz custo).
+        - conf: confianca minima para considerar uma deteccao.
+        """

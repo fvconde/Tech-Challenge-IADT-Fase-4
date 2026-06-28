@@ -34,6 +34,9 @@ data/output/
 data/storage/
 # imagem de demo baixada pelo notebook YOLOv8 (regenerada sob demanda)
 data/samples/demo_yolo.jpg
+# videos de exemplo gerados pelo scripts/gerar_video_exemplo.py (regenerados sob demanda)
+data/samples/*.mp4
+data/samples/*.avi
 *.wav.real
 *.mp4.real
 
