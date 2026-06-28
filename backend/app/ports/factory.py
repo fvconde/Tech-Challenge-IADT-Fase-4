@@ -49,7 +49,10 @@ def get_storage() -> StoragePort:
     if settings.storage_backend == "s3":
         logger.info("StoragePort -> S3StorageAdapter (cloud)")
         return S3StorageAdapter(
-            bucket=settings.s3_bucket_name, region=settings.aws_region
+            bucket=settings.s3_bucket_name,
+            region=settings.aws_region,
+            access_key=settings.aws_access_key_id or None,
+            secret_key=settings.aws_secret_access_key or None,
         )
     logger.info("StoragePort -> LocalStorageAdapter (local)")
     return LocalStorageAdapter(base_dir=settings.local_storage_dir)
@@ -59,7 +62,11 @@ def get_nlp() -> NlpPort:
     settings = get_settings()
     if settings.nlp_backend == "comprehend":
         logger.info("NlpPort -> ComprehendAdapter (cloud)")
-        return ComprehendAdapter(region=settings.aws_region)
+        return ComprehendAdapter(
+            region=settings.aws_region,
+            access_key=settings.aws_access_key_id or None,
+            secret_key=settings.aws_secret_access_key or None,
+        )
     logger.info("NlpPort -> LocalNlpAdapter (local)")
     return LocalNlpAdapter()
 

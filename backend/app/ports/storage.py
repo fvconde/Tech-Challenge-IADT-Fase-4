@@ -44,7 +44,13 @@ class S3StorageAdapter(StoragePort):
     para nao obrigar o sistema a ter boto3/credenciais para subir.
     """
 
-    def __init__(self, bucket: str, region: str = "us-east-1") -> None:
+    def __init__(
+        self,
+        bucket: str,
+        region: str = "us-east-1",
+        access_key: str | None = None,
+        secret_key: str | None = None,
+    ) -> None:
         try:
             import boto3  # import lazy: so quando o adapter cloud e escolhido
         except ImportError as exc:  # pragma: no cover - caminho de nuvem opcional
@@ -54,7 +60,19 @@ class S3StorageAdapter(StoragePort):
             ) from exc
 
         self.bucket = bucket
-        self.client = boto3.client("s3", region_name=region)
+        # Se as credenciais vierem do .env, passamos EXPLICITAMENTE ao boto3.
+        # Caso contrario (vazias), deixamos o boto3 resolver pela cadeia padrao
+        # (variaveis de ambiente, ~/.aws/credentials, IAM role). Isso evita o boto3
+        # pegar silenciosamente uma chave antiga de ~/.aws/credentials e ignorar o .env.
+        if access_key and secret_key:
+            self.client = boto3.client(
+                "s3",
+                region_name=region,
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+            )
+        else:
+            self.client = boto3.client("s3", region_name=region)
 
     def salvar(self, nome: str, conteudo: bytes) -> str:  # pragma: no cover - cloud
         self.client.put_object(Bucket=self.bucket, Key=nome, Body=conteudo)

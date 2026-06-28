@@ -124,14 +124,30 @@ class ComprehendAdapter(NlpPort):
     So deve ser usado na demo final (NLP_BACKEND=comprehend). Import lazy do boto3.
     """
 
-    def __init__(self, region: str = "us-east-1", language: str = "pt") -> None:
+    def __init__(
+        self,
+        region: str = "us-east-1",
+        language: str = "pt",
+        access_key: str | None = None,
+        secret_key: str | None = None,
+    ) -> None:
         try:
             import boto3  # lazy
         except ImportError as exc:  # pragma: no cover - cloud opcional
             raise RuntimeError(
                 "ComprehendAdapter requer boto3. Use NLP_BACKEND=local para rodar offline."
             ) from exc
-        self.client = boto3.client("comprehend", region_name=region)
+        # Mesma logica do S3StorageAdapter: credenciais do .env tem prioridade;
+        # se vazias, o boto3 usa a cadeia padrao (env vars, ~/.aws, IAM role).
+        if access_key and secret_key:
+            self.client = boto3.client(
+                "comprehend",
+                region_name=region,
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+            )
+        else:
+            self.client = boto3.client("comprehend", region_name=region)
         self.language = language
 
     @staticmethod

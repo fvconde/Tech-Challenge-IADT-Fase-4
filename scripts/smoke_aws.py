@@ -55,23 +55,51 @@ def main() -> None:
 
     # ---- S3 ----
     print(f"[S3] subindo laudo sintetico no bucket '{s.s3_bucket_name}'...")
-    storage = S3StorageAdapter(bucket=s.s3_bucket_name, region=s.aws_region)
-    uri = storage.salvar("smoke/laudo_exemplo.txt", laudo.encode("utf-8"))
+    storage = S3StorageAdapter(
+        bucket=s.s3_bucket_name,
+        region=s.aws_region,
+        access_key=s.aws_access_key_id or None,
+        secret_key=s.aws_secret_access_key or None,
+    )
+    chave_s3 = "smoke/laudo_exemplo.txt"
+    uri = storage.salvar(chave_s3, laudo.encode("utf-8"))
     print(f"[S3] OK -> {uri}")
     de_volta = storage.ler(uri).decode("utf-8")
     print(f"[S3] leitura de volta OK ({len(de_volta)} caracteres).")
 
-    # ---- Comprehend ----
-    print("[Comprehend] DetectSentiment + DetectEntities (1 chamada cada)...")
-    nlp = ComprehendAdapter(region=s.aws_region, language="pt")
-    resultado = nlp.analisar(laudo)
-    print(f"[Comprehend] sentimento: {resultado.sentimento.rotulo} "
-          f"(score={resultado.sentimento.score})")
-    print(f"[Comprehend] {len(resultado.entidades)} entidades detectadas.")
-    for e in resultado.entidades[:8]:
-        print(f"   - {e.texto} ({e.tipo})")
+    comprehend_ok = False
+    try:
+        # ---- Comprehend ----
+        print("[Comprehend] DetectSentiment + DetectEntities (1 chamada cada)...")
+        nlp = ComprehendAdapter(
+            region=s.aws_region,
+            language="pt",
+            access_key=s.aws_access_key_id or None,
+            secret_key=s.aws_secret_access_key or None,
+        )
+        resultado = nlp.analisar(laudo)
+        print(f"[Comprehend] sentimento: {resultado.sentimento.rotulo} "
+              f"(score={resultado.sentimento.score})")
+        print(f"[Comprehend] {len(resultado.entidades)} entidades detectadas.")
+        for e in resultado.entidades[:8]:
+            print(f"   - {e.texto} ({e.tipo})")
+        comprehend_ok = True
+    except Exception as exc:  # noqa: BLE001
+        # Erro do Comprehend e ESPERADO/INFORMATIVO (ex.: SubscriptionRequiredException
+        # no Free Plan sem credito). Mostramos de forma limpa, sem traceback, e seguimos
+        # para a limpeza do S3. NAO ha cobranca: a AWS apenas recusa o servico.
+        print(f"[Comprehend] INDISPONIVEL: {type(exc).__name__}: {exc}")
+    finally:
+        # LIMPEZA: remove o objeto de teste do bucket SEMPRE (mesmo se o Comprehend
+        # falhar), para nao deixar residuo no S3.
+        try:
+            storage.client.delete_object(Bucket=storage.bucket, Key=chave_s3)
+            print(f"[S3] limpeza OK -> objeto de teste '{chave_s3}' removido.")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[S3] aviso: nao consegui remover '{chave_s3}': {exc}")
 
-    print("\nSMOKE_AWS_OK")
+    # Resumo: S3 sempre testado aqui; Comprehend e opcional (pode estar indisponivel).
+    print("\nSMOKE_AWS_OK" if comprehend_ok else "\nSMOKE_S3_OK (Comprehend indisponivel)")
 
 
 if __name__ == "__main__":
