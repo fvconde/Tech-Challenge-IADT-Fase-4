@@ -84,6 +84,8 @@ class VideoAnalysisResult:
     frames_analisados: int = 0   # quantos frames foram efetivamente processados
     backend: str = "local"       # qual adapter produziu (ex.: "local_yolov8n")
     classes_foco: list[str] = field(default_factory=list)  # classes monitoradas
+    # imagem com bounding boxes desenhadas (JPEG em base64) - apenas apresentacao
+    imagem_anotada_b64: str | None = None
 
 
 @dataclass

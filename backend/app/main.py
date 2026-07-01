@@ -21,11 +21,11 @@ configurar_logging()
 settings = get_settings()
 
 app = FastAPI(
-    title="IA Multimodal - Saude da Mulher (Tech Challenge Fase 4)",
+    title="IA Multimodal — Saúde da Mulher (Tech Challenge Fase 4)",
     description=(
-        "Apoio a decisao clinica a partir de texto/audio/video. "
-        "NAO emite diagnostico: gera alertas para a equipe especializada. "
-        "Roda local por padrao; nuvem (AWS) e opcional via adapters."
+        "Apoio à decisão clínica a partir de texto, áudio, vídeo e laudos. "
+        "**NÃO** emite diagnóstico: gera alertas para a equipe especializada. "
+        "Roda local por padrão; nuvem (AWS) é opcional via adapters."
     ),
     version="0.1.0",
 )

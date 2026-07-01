@@ -13,42 +13,84 @@
       rows="4"
       placeholder="Ex.: choro o dia todo e me sinto um fracasso desde que o bebê nasceu..."
     ></textarea>
-    <button (click)="analisarTexto()">Analisar texto</button>
+    <div class="exemplos">
+      <span class="rotulo-mini">exemplos:</span>
+      <button type="button" (click)="carregarExemplo('posparto')">Pós-parto</button>
+      <button type="button" (click)="carregarExemplo('violencia')">Violência</button>
+      <button type="button" (click)="carregarExemplo('rotina')">Rotina</button>
+    </div>
+    <button [disabled]="carregando('texto')" (click)="analisarTexto()">
+      @if (carregando('texto')) {
+        <span class="spinner"></span> Analisando…
+      } @else {
+        Analisar texto
+      }
+    </button>
   </section>
 
   <!-- AUDIO -->
   <section class="grupo">
     <label class="titulo">Áudio (.wav)</label>
     <input type="file" accept=".wav,.aiff,.aif,.flac" (change)="onFile($event, 'audio')" />
-    <button (click)="analisarAudio()">Analisar áudio</button>
+    <button [disabled]="carregando('audio')" (click)="analisarAudio()">
+      @if (carregando('audio')) {
+        <span class="spinner"></span> Analisando…
+      } @else {
+        Analisar áudio
+      }
+    </button>
   </section>
 
   <!-- VIDEO -->
   <section class="grupo">
     <label class="titulo">Vídeo (.mp4, .avi, .mov)</label>
     <input type="file" accept=".mp4,.avi,.mov,.mkv,.webm" (change)="onFile($event, 'video')" />
-    <button (click)="analisarVideo()">Analisar vídeo</button>
+    <button [disabled]="carregando('video')" (click)="analisarVideo()">
+      @if (carregando('video')) {
+        <span class="spinner"></span> Analisando…
+      } @else {
+        Analisar vídeo
+      }
+    </button>
   </section>
 
   <!-- IMAGEM -->
   <section class="grupo">
     <label class="titulo">Imagem (.jpg, .png)</label>
     <input type="file" accept=".jpg,.jpeg,.png,.bmp,.webp" (change)="onFile($event, 'imagem')" />
-    <button (click)="analisarImagem()">Analisar imagem</button>
+    <button [disabled]="carregando('imagem')" (click)="analisarImagem()">
+      @if (carregando('imagem')) {
+        <span class="spinner"></span> Analisando…
+      } @else {
+        Analisar imagem
+      }
+    </button>
   </section>
 
   <!-- LAUDO -->
   <section class="grupo">
     <label class="titulo">Laudo (.pdf)</label>
     <input type="file" accept=".pdf" (change)="onFile($event, 'laudo')" />
-    <button (click)="analisarLaudo()">Analisar laudo</button>
+    <button [disabled]="carregando('laudo')" (click)="analisarLaudo()">
+      @if (carregando('laudo')) {
+        <span class="spinner"></span> Analisando…
+      } @else {
+        Analisar laudo
+      }
+    </button>
   </section>
 
   <div class="divisor"></div>
 
   <!-- FUSAO -->
   <section class="grupo">
-    <button class="fusao" (click)="fundir()">🚨 Gerar alerta (fusão)</button>
+    <button class="fusao" [disabled]="carregando('fusao')" (click)="fundir()">
+      @if (carregando('fusao')) {
+        <span class="spinner"></span> Analisando…
+      } @else {
+        🚨 Gerar alerta (fusão)
+      }
+    </button>
     <small>Combina texto + vídeo/imagem + laudo num único alerta à equipe.</small>
   </section>
 </aside>

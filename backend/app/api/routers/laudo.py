@@ -24,7 +24,9 @@ def _sufixo(nome: str) -> str:
     return "." + nome.rsplit(".", 1)[-1].lower() if "." in nome else ""
 
 
-@router.post("/analyze", response_model=AnaliseRiscoResponse)
+@router.post(
+    "/analyze", response_model=AnaliseRiscoResponse, summary="Analisar laudo em PDF"
+)
 async def analisar(
     arquivo: UploadFile = File(..., description="PDF de laudo/exame"),
     ocr: OcrPort = Depends(get_ocr),

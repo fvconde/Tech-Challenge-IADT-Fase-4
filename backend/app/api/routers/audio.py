@@ -16,7 +16,11 @@ router = APIRouter(prefix="/api/audio", tags=["audio"])
 EXTENSOES_SUPORTADAS = {".wav", ".aiff", ".aif", ".flac"}
 
 
-@router.post("/analyze", response_model=AnaliseRiscoResponse)
+@router.post(
+    "/analyze",
+    response_model=AnaliseRiscoResponse,
+    summary="Analisar áudio de consulta",
+)
 async def analisar(
     arquivo: UploadFile = File(..., description="Audio da consulta (WAV recomendado)"),
     transcription: TranscriptionPort = Depends(get_transcription),

@@ -79,6 +79,7 @@ class LocalVideoAdapter(VideoPort):
             frames_analisados=1,
             backend=f"local_{Path(self._nome_modelo).stem}",
             classes_foco=classes_foco,
+            imagem_anotada_b64=self._encode_anotada(resultados[0]),
         )
 
     # ---------------------- video ----------------------
@@ -103,6 +104,10 @@ class LocalVideoAdapter(VideoPort):
         indice = 0
         amostragem = max(1, amostragem)  # evita divisao por zero / loop infinito
 
+        # guarda o frame de MAIOR confianca para anotar (imagem representativa da demo)
+        melhor_conf = -1.0
+        melhor_resultado = None
+
         try:
             while True:
                 ok, frame = captura.read()
@@ -114,6 +119,11 @@ class LocalVideoAdapter(VideoPort):
                     deteccoes.extend(
                         self._extrair_deteccoes(resultados[0], modelo.names, frame=indice)
                     )
+                    # confianca maxima neste frame
+                    confs = [float(b.conf[0]) for b in resultados[0].boxes]
+                    if confs and max(confs) > melhor_conf:
+                        melhor_conf = max(confs)
+                        melhor_resultado = resultados[0]
                     frames_analisados += 1
                 indice += 1
         finally:
@@ -128,6 +138,9 @@ class LocalVideoAdapter(VideoPort):
             frames_analisados=frames_analisados,
             backend=f"local_{Path(self._nome_modelo).stem}",
             classes_foco=classes_foco,
+            imagem_anotada_b64=(
+                self._encode_anotada(melhor_resultado) if melhor_resultado else None
+            ),
         )
 
     @staticmethod
@@ -142,6 +155,27 @@ class LocalVideoAdapter(VideoPort):
             )
         return saida
 
+    @staticmethod
+    def _encode_anotada(resultado_yolo) -> str | None:
+        """
+        Desenha as bounding boxes (result.plot()) e devolve a imagem como JPEG
+        em base64. E APENAS apresentacao: qualquer falha vira None (nao pode
+        quebrar o endpoint de analise).
+        """
+        try:
+            import base64
+
+            import cv2  # disponivel junto do ultralytics
+
+            arr = resultado_yolo.plot()  # ndarray BGR com as boxes desenhadas
+            ok, buffer = cv2.imencode(".jpg", arr)
+            if not ok:
+                return None
+            return base64.b64encode(buffer.tobytes()).decode("ascii")
+        except Exception:  # pragma: no cover - anotacao e so apresentacao
+            logger.warning("Falha ao gerar imagem anotada.", exc_info=True)
+            return None
+
 
 class MockVideoAdapter(VideoPort):
     """
@@ -155,9 +189,11 @@ class MockVideoAdapter(VideoPort):
         self,
         deteccoes: list[DeteccaoVisual] | None = None,
         frames_analisados: int = 1,
+        imagem_anotada_b64: str | None = None,
     ) -> None:
         self._deteccoes = deteccoes or []
         self._frames = frames_analisados
+        self._imagem_anotada_b64 = imagem_anotada_b64
 
     def analisar(
         self,
@@ -171,4 +207,5 @@ class MockVideoAdapter(VideoPort):
             frames_analisados=self._frames,
             backend="mock",
             classes_foco=classes_foco,
+            imagem_anotada_b64=self._imagem_anotada_b64,
         )

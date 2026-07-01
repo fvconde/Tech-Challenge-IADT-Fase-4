@@ -77,9 +77,51 @@ button.fusao {
 button.fusao:hover {
   background: #991b1b;
 }
+button[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}
 .grupo small {
   color: #94a3b8;
   font-size: 0.75rem;
+}
+
+/* spinner de carregamento (usado dentro dos botoes) */
+.spinner {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: girar 0.7s linear infinite;
+  vertical-align: -0.15em;
+  margin-right: 0.3rem;
+}
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* botoes de "carregar exemplo" (discretos, abaixo do textarea) */
+.exemplos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+.exemplos .rotulo-mini {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+.exemplos button {
+  background: #334155;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+.exemplos button:hover {
+  background: #475569;
 }
 
 .divisor {

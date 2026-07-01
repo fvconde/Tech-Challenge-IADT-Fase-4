@@ -40,7 +40,11 @@ from backend.app.services.video.pipeline import analisar_video
 router = APIRouter(prefix="/api/fusion", tags=["fusao"])
 
 
-@router.post("/analyze", response_model=AnaliseRiscoResponse)
+@router.post(
+    "/analyze",
+    response_model=AnaliseRiscoResponse,
+    summary="Análise multimodal (fusão)",
+)
 async def analisar(
     texto: str | None = Form(default=None, description="Relato/transcricao (opcional)"),
     video_arquivo: UploadFile | None = File(

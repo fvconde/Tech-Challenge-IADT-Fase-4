@@ -132,6 +132,10 @@ demo de alerta **alto** com modelo real, use um clipe/imagem contendo faca ou te
 O notebook [notebooks/01_yolov8_demo.ipynb](notebooks/01_yolov8_demo.ipynb) segue
 disponível para inspeção visual da detecção.
 
+> A resposta de `/api/video/analyze` (e da fusão) inclui **`imagem_anotada_b64`**: a imagem
+> com as bounding boxes desenhadas pelo YOLOv8 (JPEG em base64), pronta para exibir no
+> frontend. Para vídeos, é anotado o frame de maior confiança.
+
 ---
 
 ## Laudos (PDF): OCR + sumarização
@@ -177,6 +181,25 @@ python scripts/smoke_aws.py     # sobe o laudo no S3 + 1 chamada ao Comprehend
 
 ---
 
+## Frontend (Angular 19)
+
+Interface web que consome a API e demonstra o fluxo multimodal ponta-a-ponta — **página
+única** com sidebar fixa (entradas por modalidade) e feed de resultados. Destaques de
+apresentação: **badge de severidade** (verde/âmbar/vermelho), **spinner** por botão
+enquanto a requisição roda, **botões de exemplo** (pós-parto / violência / rotina), exibição
+da **imagem anotada** do YOLOv8 e o **alerta à equipe médica** na fusão.
+
+```powershell
+# com o backend rodando (uvicorn) em http://127.0.0.1:8000:
+npm --prefix frontend install    # 1ª vez
+npm --prefix frontend start      # abre http://localhost:4200
+```
+
+O backend libera **CORS** para `http://localhost:4200`. Detalhes em
+[frontend/README.md](frontend/README.md).
+
+---
+
 ## Testes
 
 ```powershell
@@ -195,6 +218,7 @@ Ver seção 7 do [CLAUDE.md](CLAUDE.md). Resumo:
 - `backend/app/services/` — lógica por modalidade (audio, text/document, video, fusion)
 - `backend/app/api/routers/` — endpoints REST (text, audio, video, laudo, fusion)
 - `scripts/` — geradores de exemplo (vídeo, laudo), ROUGE e smoke AWS
+- `frontend/` — app Angular 19 (interface web da demo)
 - `notebooks/` — demos (YOLOv8, NLP)
 - `data/samples/` — dados sintéticos (sem PHI)
 - `docs/` — relatório técnico e decisões arquiteturais
@@ -208,6 +232,7 @@ Ver seção 7 do [CLAUDE.md](CLAUDE.md). Resumo:
 - [x] OCR local de laudos (pdfplumber/PyMuPDF/pytesseract) — substituto do Textract
 - [x] Sumarização local (transformers `distilbart`) + avaliação ROUGE
 - [x] Adapters de nuvem (S3 + Comprehend) com smoke opt-in (`scripts/smoke_aws.py`)
+- [x] Frontend Angular 19 (interface multimodal + alerta à equipe)
 - [ ] Vídeo: somar DeepFace (emoção) + MediaPipe (pose) na mesma fusão
 - [ ] Bedrock (sumarização/agente) na demo final, se sobrar crédito
-- [ ] Frontend Angular
+- [ ] Gravar o vídeo de demonstração (até 15 min)

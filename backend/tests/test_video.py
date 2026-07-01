@@ -83,3 +83,21 @@ def test_video_formato_invalido():
         files={"arquivo": ("doc.txt", b"x", "text/plain")},
     )
     assert r.status_code == 415
+
+
+def test_video_analyze_inclui_imagem_anotada():
+    # o adapter devolve a imagem anotada (base64) e o response deve repassa-la
+    app.dependency_overrides[get_video] = lambda: MockVideoAdapter(
+        deteccoes=[DeteccaoVisual("scissors", 0.7, 0)],
+        imagem_anotada_b64="ZmFrZQ==",  # "fake" em base64
+    )
+    try:
+        r = client.post(
+            "/api/video/analyze",
+            files={"arquivo": ("foto.jpg", b"fake-img", "image/jpeg")},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    assert r.json()["imagem_anotada_b64"] == "ZmFrZQ=="

@@ -38,6 +38,7 @@ export interface AnaliseRiscoResponse {
   modalidades: string[]; // ex.: ["texto", "video", "laudo"]
   deteccoes_video: DeteccaoVisual[] | null;
   frames_analisados: number | null;
+  imagem_anotada_b64: string | null; // JPEG (base64) com bounding boxes do YOLOv8
   texto_documento: string | null;
   resumo: string | null;
   backend_transcricao: string | null;

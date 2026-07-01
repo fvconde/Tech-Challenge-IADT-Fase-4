@@ -23,7 +23,7 @@ def _sufixo(nome: str) -> str:
     return "." + nome.rsplit(".", 1)[-1].lower() if "." in nome else ""
 
 
-@router.get("/status")
+@router.get("/status", summary="Status do módulo de vídeo")
 def status() -> dict:
     """Estado do modulo de video e configuracao ativa."""
     s = get_settings()
@@ -36,7 +36,11 @@ def status() -> dict:
     }
 
 
-@router.post("/analyze", response_model=AnaliseRiscoResponse)
+@router.post(
+    "/analyze",
+    response_model=AnaliseRiscoResponse,
+    summary="Analisar vídeo/imagem (YOLOv8)",
+)
 async def analisar(
     arquivo: UploadFile = File(..., description="Imagem ou video clinico de exemplo"),
     video: VideoPort = Depends(get_video),

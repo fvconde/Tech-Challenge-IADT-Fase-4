@@ -21,8 +21,9 @@ env/
 *.pth
 *.bin
 *.h5
-models/
-weights/
+# Ancorado na raiz (/) para NAO ignorar backend/app/models/ (schemas Pydantic).
+/models/
+/weights/
 
 # ===== Dados reais (LGPD: nunca versionar PHI) =====
 # Mantemos apenas data/samples/ (sintético). Tudo o mais é ignorado.

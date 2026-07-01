@@ -93,6 +93,17 @@ import { NivelBadgeComponent } from './nivel-badge.component';
         </div>
       }
 
+      @if (resp.imagem_anotada_b64) {
+        <div class="bloco">
+          <span class="rotulo">imagem anotada (YOLOv8)</span>
+          <img
+            class="anotada"
+            [src]="'data:image/jpeg;base64,' + resp.imagem_anotada_b64"
+            alt="Detecção YOLOv8 com bounding boxes"
+          />
+        </div>
+      }
+
       @if (resp.texto_documento) {
         <details class="bloco">
           <summary>texto extraído do laudo</summary>
@@ -145,6 +156,7 @@ import { NivelBadgeComponent } from './nivel-badge.component';
       .cat-score { color: #64748b; margin-left: 0.5rem; font-size: 0.85rem; }
       ul.ev { margin: 0.3rem 0 0; padding-left: 1.1rem; color: #475569; font-size: 0.88rem; }
       .doc { white-space: pre-wrap; background: #0f172a; color: #e2e8f0; padding: 0.7rem; border-radius: 8px; font-size: 0.8rem; max-height: 240px; overflow: auto; }
+      .anotada { display: block; max-width: 100%; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 0.4rem; }
       .muted { color: #94a3b8; font-style: italic; }
       .card-foot { margin-top: 0.8rem; border-top: 1px solid #f1f5f9; padding-top: 0.5rem; }
       .aviso { color: #92400e; font-size: 0.82rem; margin: 0; }

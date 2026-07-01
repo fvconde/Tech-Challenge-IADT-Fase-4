@@ -41,6 +41,32 @@ export class HomeComponent {
   resultados = signal<ResultadoItem[]>([]);
   private contador = 0;
 
+  // acoes em andamento (para o spinner/disabled por botao)
+  private carregandoAcao = signal<Record<string, boolean>>({});
+  carregando(acao: string): boolean {
+    return this.carregandoAcao()[acao] === true;
+  }
+  private setCarregando(acao: string, valor: boolean): void {
+    this.carregandoAcao.update((m) => ({ ...m, [acao]: valor }));
+  }
+
+  // relatos sinteticos de exemplo (sem PHI) para preencher o textarea rapidamente
+  private readonly exemplos: Record<'posparto' | 'violencia' | 'rotina', string> = {
+    posparto:
+      'Desde que o bebê nasceu eu choro o dia todo e me sinto um fracasso. Não ' +
+      'consigo cuidar do bebê direito, estou exausta e triste, e sinto muita culpa.',
+    violencia:
+      'Eu tenho medo dele em casa. Semana passada ele me empurrou e me ameaçou. Ele ' +
+      'me controla, não posso sair de casa, e eu tenho vergonha de contar para alguém.',
+    rotina:
+      'Vim só para a consulta de rotina e buscar o resultado do exame. Estou me ' +
+      'sentindo bem e tranquila, apoiada pela família, e queria tirar uma dúvida.',
+  };
+
+  carregarExemplo(tipo: 'posparto' | 'violencia' | 'rotina'): void {
+    this.texto = this.exemplos[tipo];
+  }
+
   // captura o arquivo escolhido em cada input
   onFile(ev: Event, tipo: TipoArquivo): void {
     const input = ev.target as HTMLInputElement;
@@ -53,7 +79,7 @@ export class HomeComponent {
       this.adicionarErro('Texto', 'Digite algum texto antes de analisar.');
       return;
     }
-    this.executar('Texto', false, this.api.analisarTexto(this.texto));
+    this.executar('texto', 'Texto', false, this.api.analisarTexto(this.texto));
   }
 
   analisarAudio(): void {
@@ -85,6 +111,7 @@ export class HomeComponent {
       return;
     }
     this.executar(
+      'fusao',
       '🚨 Alerta multimodal (fusão)',
       true,
       this.api.analisarFusao({ texto: this.texto, video, laudo }),
@@ -106,22 +133,30 @@ export class HomeComponent {
       this.adicionarErro(titulo, `Selecione um arquivo de ${titulo.toLowerCase()} primeiro.`);
       return;
     }
-    this.executar(titulo, false, chamada(file));
+    this.executar(tipo, titulo, false, chamada(file));
   }
 
   private executar(
+    acao: string,
     titulo: string,
     destaque: boolean,
     chamada: Observable<AnaliseRiscoResponse>,
   ): void {
     const id = ++this.contador;
+    this.setCarregando(acao, true);
     this.resultados.update((lista) => [
       { id, titulo, destaque, carregando: true },
       ...lista,
     ]);
     chamada.subscribe({
-      next: (resp) => this.patch(id, { resp, carregando: false }),
-      error: (err) => this.patch(id, { erro: this.msgErro(err), carregando: false }),
+      next: (resp) => {
+        this.setCarregando(acao, false);
+        this.patch(id, { resp, carregando: false });
+      },
+      error: (err) => {
+        this.setCarregando(acao, false);
+        this.patch(id, { erro: this.msgErro(err), carregando: false });
+      },
     });
   }
 

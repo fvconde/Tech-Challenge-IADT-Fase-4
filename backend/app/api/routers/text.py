@@ -12,7 +12,9 @@ from backend.app.services.text.nlp import analisar_texto
 router = APIRouter(prefix="/api/text", tags=["texto"])
 
 
-@router.post("/analyze", response_model=AnaliseRiscoResponse)
+@router.post(
+    "/analyze", response_model=AnaliseRiscoResponse, summary="Analisar relato textual"
+)
 def analisar(
     payload: TextoRequest,
     nlp: NlpPort = Depends(get_nlp),

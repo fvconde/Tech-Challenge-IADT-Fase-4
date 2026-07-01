@@ -133,5 +133,6 @@ def fundir(
         ]
         resposta.frames_analisados = video_result.frames_analisados
         resposta.backend_video = video_result.backend
+        resposta.imagem_anotada_b64 = video_result.imagem_anotada_b64
 
     return resposta
