@@ -1,0 +1,83 @@
+<!-- Layout: sidebar fixa a esquerda (inputs) + area central rolavel (resultados) -->
+<aside class="sidebar">
+  <div class="brand">
+    <h1>IA Multimodal</h1>
+    <p>Saúde &amp; segurança da mulher — apoio à decisão</p>
+  </div>
+
+  <!-- TEXTO -->
+  <section class="grupo">
+    <label class="titulo">Texto / relato</label>
+    <textarea
+      [(ngModel)]="texto"
+      rows="4"
+      placeholder="Ex.: choro o dia todo e me sinto um fracasso desde que o bebê nasceu..."
+    ></textarea>
+    <button (click)="analisarTexto()">Analisar texto</button>
+  </section>
+
+  <!-- AUDIO -->
+  <section class="grupo">
+    <label class="titulo">Áudio (.wav)</label>
+    <input type="file" accept=".wav,.aiff,.aif,.flac" (change)="onFile($event, 'audio')" />
+    <button (click)="analisarAudio()">Analisar áudio</button>
+  </section>
+
+  <!-- VIDEO -->
+  <section class="grupo">
+    <label class="titulo">Vídeo (.mp4, .avi, .mov)</label>
+    <input type="file" accept=".mp4,.avi,.mov,.mkv,.webm" (change)="onFile($event, 'video')" />
+    <button (click)="analisarVideo()">Analisar vídeo</button>
+  </section>
+
+  <!-- IMAGEM -->
+  <section class="grupo">
+    <label class="titulo">Imagem (.jpg, .png)</label>
+    <input type="file" accept=".jpg,.jpeg,.png,.bmp,.webp" (change)="onFile($event, 'imagem')" />
+    <button (click)="analisarImagem()">Analisar imagem</button>
+  </section>
+
+  <!-- LAUDO -->
+  <section class="grupo">
+    <label class="titulo">Laudo (.pdf)</label>
+    <input type="file" accept=".pdf" (change)="onFile($event, 'laudo')" />
+    <button (click)="analisarLaudo()">Analisar laudo</button>
+  </section>
+
+  <div class="divisor"></div>
+
+  <!-- FUSAO -->
+  <section class="grupo">
+    <button class="fusao" (click)="fundir()">🚨 Gerar alerta (fusão)</button>
+    <small>Combina texto + vídeo/imagem + laudo num único alerta à equipe.</small>
+  </section>
+</aside>
+
+<!-- AREA CENTRAL -->
+<main class="conteudo">
+  <header class="topo">
+    <h2>Resultados</h2>
+    @if (resultados().length) {
+      <button class="limpar" (click)="limpar()">Limpar</button>
+    }
+  </header>
+
+  @if (!resultados().length) {
+    <p class="vazio">
+      Use os campos à esquerda para analisar cada modalidade, ou clique em
+      <strong>Gerar alerta (fusão)</strong> para o alerta multimodal.
+    </p>
+  }
+
+  @for (item of resultados(); track item.id) {
+    <div class="item">
+      @if (item.carregando) {
+        <div class="placeholder">⏳ {{ item.titulo }} — analisando…</div>
+      } @else if (item.erro) {
+        <div class="erro"><strong>{{ item.titulo }}</strong><br />{{ item.erro }}</div>
+      } @else if (item.resp) {
+        <app-alerta-card [resp]="item.resp" [titulo]="item.titulo" [destaque]="item.destaque" />
+      }
+    </div>
+  }
+</main>

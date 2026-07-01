@@ -1,0 +1,149 @@
+:host {
+  display: block;
+}
+
+/* ---------- Sidebar fixa (scroll proprio, nao acompanha a pagina) ---------- */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 340px;
+  height: 100vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 1.2rem 1rem 2rem;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+.brand p {
+  margin: 0.2rem 0 1rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.grupo {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.grupo .titulo {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #93c5fd;
+  font-weight: 700;
+}
+.grupo textarea,
+.grupo input[type='file'] {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+}
+.grupo textarea {
+  border-radius: 6px;
+  border: 1px solid #334155;
+  padding: 0.5rem;
+  resize: vertical;
+}
+.grupo input[type='file'] {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  font: inherit;
+  font-weight: 600;
+  background: #2563eb;
+  color: #fff;
+}
+button:hover {
+  background: #1d4ed8;
+}
+button.fusao {
+  background: #b91c1c;
+  font-size: 1rem;
+  padding: 0.8rem;
+}
+button.fusao:hover {
+  background: #991b1b;
+}
+.grupo small {
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.divisor {
+  height: 1px;
+  background: #334155;
+  margin: 1.2rem 0;
+}
+
+/* ---------- Area central rolavel ---------- */
+.conteudo {
+  margin-left: 340px;
+  padding: 1.5rem 2rem 3rem;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+.topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.topo h2 {
+  margin: 0;
+}
+button.limpar {
+  background: #64748b;
+}
+button.limpar:hover {
+  background: #475569;
+}
+
+.vazio {
+  color: #64748b;
+  background: #fff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 1.5rem;
+}
+
+.placeholder {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1rem;
+  color: #475569;
+}
+.erro {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1rem;
+}
+
+/* responsivo simples: em telas estreitas a sidebar vira topo */
+@media (max-width: 720px) {
+  .sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+  }
+  .conteudo {
+    margin-left: 0;
+  }
+}
