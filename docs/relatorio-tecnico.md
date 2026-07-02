@@ -1,7 +1,8 @@
 # Relatório Técnico — Tech Challenge Fase 4
 
-> Documento em construção. Esqueleto criado na Sessão 1; será preenchido com
-> resultados e exemplos ao longo do desenvolvimento.
+> Relatório técnico da solução: cobre o **fluxo multimodal**, os **modelos por tipo de
+> dado** e os **resultados reais** obtidos. As decisões de LGPD, custo e nuvem estão em
+> [decisoes-arquiteturais.md](decisoes-arquiteturais.md).
 
 ## 1. Visão geral da solução
 
@@ -43,8 +44,17 @@ alerta único. Endpoints: `/api/text/analyze`, `/api/audio/analyze`, `/api/video
 | Vídeo      | Detecção de objetos                        | ultralytics (YOLOv8n) | ✅     |
 | Laudo      | Extração de texto de PDF (OCR)             | pdfplumber / PyMuPDF / pytesseract | ✅ (sem Textract) |
 | Laudo      | Sumarização abstrativa                     | transformers (distilbart-cnn) | ✅ |
-| Nuvem (opc)| Sentimento/entidades                       | Amazon Comprehend     | ☁️     |
-| Nuvem (opc)| Armazenamento                              | Amazon S3             | ☁️     |
+| Nuvem      | Armazenamento (**usado**)                  | Amazon S3             | ☁️ ✅ funciona |
+| Nuvem      | Sentimento/entidades                       | Amazon Comprehend     | ☁️ ❌ indisponível → NLP local |
+
+> **Áudio:** a modalidade de áudio reusa **todo** o pipeline de texto — a fala é
+> transcrita (`recognize_google`) e o texto passa pelo **mesmo** léxico PT-BR +
+> classificador sklearn, virando a modalidade `audio` na fusão.
+>
+> **Nuvem (real):** o smoke contra a conta AWS confirmou **S3 funcionando** e
+> **Comprehend indisponível** (`SubscriptionRequiredException`, Free Plan por créditos,
+> sem cobrança). O sistema usa **S3** para armazenamento e **NLP local** (degradação
+> graciosa via ports/adapters). Detalhe em [decisoes-arquiteturais.md](decisoes-arquiteturais.md) §7.
 
 ## 4. Modelo de vídeo (YOLOv8) e regras de risco
 
@@ -132,16 +142,23 @@ carrega as **evidências** que o motivaram.
   `violencia_domestica` + `objeto_suspeito_automutilacao`, **alto**.
 - texto de violência + laudo de pós-parto → `["texto","laudo"]`, **alto**.
 
-**Testes:** 28 casos automatizados passando (`pytest backend/tests`).
+**Nuvem (resultado real, smoke contra a conta AWS):**
+- **S3:** ✅ upload + leitura + limpeza do laudo sintético OK.
+- **Comprehend:** ❌ `SubscriptionRequiredException` (Free Plan por créditos, **sem
+  cobrança**) → o `NlpPort` cai no `LocalNlpAdapter` sem perda de função. **Prova de
+  degradação graciosa** do padrão ports/adapters, validada contra a AWS real.
+
+**Testes:** 29 casos automatizados passando (`pytest backend/tests`).
 
 ## 7. Conformidade e limitações
 
 - Sem PHI; apenas dados sintéticos (LGPD). Ver [decisoes-arquiteturais.md](decisoes-arquiteturais.md).
 - `recognize_google` envia áudio a terceiros — usar só material sintético; backend
   offline previsto como melhoria.
-- **Amazon Comprehend** (opcional, `NLP_BACKEND=comprehend`) **envia o texto do laudo a um
-  serviço de terceiros (AWS)** e consome crédito. Usar **apenas com texto sintético**, em
-  pouquíssimas chamadas, e só na demo final. O default é local (offline).
+- **Amazon Comprehend** ficou **indisponível na conta** (`SubscriptionRequiredException`,
+  Free Plan por créditos; **sem cobrança**). O sistema usa o `LocalNlpAdapter` (default) —
+  degradação graciosa via ports/adapters, **sem perda de função**. Se um dia for habilitado,
+  lembrar que ele envia texto a terceiros (AWS) → só com dado sintético.
 - Extração de laudo é **100% local** (pdfplumber/PyMuPDF/pytesseract) — Textract não é usado.
 - distilbart-cnn é treinado em inglês; resumo em português é aproximado.
 - Léxico/classificador são propositais e **explicáveis**, mas têm cobertura limitada;

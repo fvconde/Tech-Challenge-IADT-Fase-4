@@ -25,14 +25,15 @@ acionar protocolo", nunca como conclusão clínica.
 A conta AWS do autor é do **modelo novo (créditos US$100–200, ~12 meses)**, sem
 trials de 12 meses por serviço. Logo, créditos são **orçamento escasso**:
 
-| Serviço      | Decisão                                                        |
-|--------------|---------------------------------------------------------------|
-| **S3**       | OK usar (Always-Free). `S3StorageAdapter` opcional.           |
-| Comprehend   | Só na demo final. `ComprehendAdapter` opcional; default local.|
-| Rekognition  | Não usar (visão é local — YOLOv8/DeepFace/MediaPipe).         |
-| Bedrock      | Só na demo final, poucas chamadas, se sobrar crédito.         |
-| **Textract** | **Bloqueado / não usar.** OCR de laudos será 100% local.     |
+| Serviço      | Decisão / resultado real                                          |
+|--------------|------------------------------------------------------------------|
+| **S3**       | ✅ **Funciona** (Always-Free). `S3StorageAdapter` disponível.     |
+| **Comprehend** | ❌ **Indisponível** (`SubscriptionRequiredException`). → NLP local.|
+| Rekognition  | Não usar (visão é local — YOLOv8/DeepFace/MediaPipe).            |
+| Bedrock      | Não usado (sumarização é local via distilbart).                 |
+| **Textract** | **Bloqueado / não usar.** OCR de laudos é 100% local.           |
 
+> Resultado confirmado por smoke contra a conta real — ver **item 7**.
 > Ação recomendada: criar um **AWS Budget de US$1** com alerta, desde já.
 
 ## 3. Padrão ports/adapters (injeção de dependência)
@@ -99,15 +100,36 @@ Google**. Portanto:
 - **Limitação assumida:** distilbart-cnn é treinado em inglês → resumo em PT é aproximado.
   Avaliamos com ROUGE (`scripts/avaliar_rouge.py`) contra um resumo de referência sintético.
 
-## 7. Nuvem (de-risco): smoke isolado e opt-in
+## 7. Nuvem: decisão oficial e degradação graciosa (testada contra a AWS real)
 
-- Os adapters `S3StorageAdapter` e `ComprehendAdapter` (boto3 lazy) já existem; o default
-  segue **local**. Para confirmar se a conta AWS permite os serviços **antes da demo**, há
-  `scripts/smoke_aws.py`: sobe o laudo sintético no S3 e chama o Comprehend **uma vez**.
-- **Opt-in e fora do pytest:** só roda com `RUN_AWS_SMOKE=1` + credenciais no `.env`. Os
-  testes do projeto passam **sem AWS** (a lógica de mapeamento é testada com clients falsos).
-- **Conformidade:** Comprehend envia o texto a um terceiro (AWS) e consome crédito → usar
-  **só com laudo sintético**, poucas chamadas. Documentado no relatório.
+**Resultado do smoke (`scripts/smoke_aws.py`, executado contra a conta real):**
+
+| Serviço | Resultado | Detalhe |
+|---------|-----------|---------|
+| **S3** | ✅ funciona | upload + leitura + delete OK (objeto de teste removido no fim). |
+| **Comprehend** | ❌ indisponível | `SubscriptionRequiredException`: *"The AWS Access Key Id needs a subscription for the service"*. |
+
+**Decisão oficial de nuvem:**
+- **Armazenamento → S3** (`STORAGE_BACKEND=s3`, Always-Free). É o serviço gerenciado de
+  nuvem efetivamente usável neste projeto.
+- **NLP → local** (`NLP_BACKEND=local`, `LocalNlpAdapter`: léxico PT-BR + classificador
+  sklearn). O `ComprehendAdapter` existe e está pronto, mas o **Free Plan por créditos
+  bloqueia a subscription** do serviço. **Sem cobrança**: a AWS recusa *antes* de processar.
+
+**Por que isso é uma PROVA do valor de ports/adapters (não uma falha):**
+- A indisponibilidade da nuvem foi **absorvida trocando uma única variável de ambiente**
+  (`NLP_BACKEND`): routers e serviços não mudaram. O `NlpPort` cai no adapter local e o
+  sistema segue **sem perda de função** — o `LocalNlpAdapter` já entrega sentimento,
+  entidades e categorias de risco **explicáveis** (com evidências).
+- Ou seja, projetamos para **degradação graciosa** e isso foi **testado contra a AWS real**,
+  não só no papel. É exatamente o cenário que o padrão previa.
+
+**Conformidade (LGPD):** o smoke trafegou **apenas texto sintético** (laudo fictício);
+nenhum PHI. Reforça a postura de dados sintéticos de todo o projeto.
+
+**Ferramenta:** `scripts/smoke_aws.py` é **opt-in** (`RUN_AWS_SMOKE=1` + credenciais no
+`.env`) e **não roda no pytest** — a lógica de mapeamento dos adapters é testada com
+clients falsos, então a suíte passa **sem AWS**.
 
 ## 8. Segredos e dados
 
