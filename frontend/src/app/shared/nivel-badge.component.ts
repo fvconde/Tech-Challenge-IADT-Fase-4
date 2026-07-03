@@ -16,19 +16,30 @@ import { NivelAlerta } from '../core/models';
   styles: [
     `
       .badge {
-        display: inline-block;
-        padding: 0.2rem 0.7rem;
-        border-radius: 999px;
-        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.34rem;
+        padding: 0.24rem 0.64rem 0.24rem 0.5rem;
+        border-radius: var(--radius-pill, 999px);
+        font-family: var(--font-mono, monospace);
+        font-weight: 600;
         text-transform: uppercase;
-        font-size: 0.72rem;
-        letter-spacing: 0.05em;
+        font-size: 0.7rem;
+        letter-spacing: 0.09em;
         color: #fff;
-        background: #64748b;
+        background: var(--sev-neutro, #7f9294);
       }
-      .baixo { background: #15803d; }
-      .medio { background: #b45309; }
-      .alto { background: #b91c1c; }
+      /* ponto de triagem à esquerda do rótulo */
+      .badge::before {
+        content: '';
+        width: 0.42rem;
+        height: 0.42rem;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+      }
+      .baixo { background: var(--sev-baixo, #1f7a4d); }
+      .medio { background: var(--sev-medio, #b0730c); }
+      .alto { background: var(--sev-alto, #b4232a); }
     `,
   ],
 })

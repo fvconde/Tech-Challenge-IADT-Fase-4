@@ -1,8 +1,9 @@
-<!-- Layout: sidebar fixa a esquerda (inputs) + area central rolavel (resultados) -->
+<!-- Layout: trilho de entrada (intake) fixo à esquerda + feed de resultados rolável -->
 <aside class="sidebar">
   <div class="brand">
     <h1>IA Multimodal</h1>
-    <p>Saúde &amp; segurança da mulher — apoio à decisão</p>
+    <p>Saúde &amp; segurança da mulher</p>
+    <span class="stamp">Apoio à decisão · não é diagnóstico</span>
   </div>
 
   <!-- TEXTO -->
@@ -14,7 +15,7 @@
       placeholder="Ex.: choro o dia todo e me sinto um fracasso desde que o bebê nasceu..."
     ></textarea>
     <div class="exemplos">
-      <span class="rotulo-mini">exemplos:</span>
+      <span class="rotulo-mini">exemplos</span>
       <button type="button" (click)="carregarExemplo('posparto')">Pós-parto</button>
       <button type="button" (click)="carregarExemplo('violencia')">Violência</button>
       <button type="button" (click)="carregarExemplo('rotina')">Rotina</button>
@@ -30,7 +31,7 @@
 
   <!-- AUDIO -->
   <section class="grupo">
-    <label class="titulo">Áudio (.wav)</label>
+    <label class="titulo">Áudio <span class="ext">.wav</span></label>
     <input type="file" accept=".wav,.aiff,.aif,.flac" (change)="onFile($event, 'audio')" />
     <button [disabled]="carregando('audio')" (click)="analisarAudio()">
       @if (carregando('audio')) {
@@ -43,7 +44,7 @@
 
   <!-- VIDEO -->
   <section class="grupo">
-    <label class="titulo">Vídeo (.mp4, .avi, .mov)</label>
+    <label class="titulo">Vídeo <span class="ext">.mp4 .avi .mov</span></label>
     <input type="file" accept=".mp4,.avi,.mov,.mkv,.webm" (change)="onFile($event, 'video')" />
     <button [disabled]="carregando('video')" (click)="analisarVideo()">
       @if (carregando('video')) {
@@ -56,7 +57,7 @@
 
   <!-- IMAGEM -->
   <section class="grupo">
-    <label class="titulo">Imagem (.jpg, .png)</label>
+    <label class="titulo">Imagem <span class="ext">.jpg .png</span></label>
     <input type="file" accept=".jpg,.jpeg,.png,.bmp,.webp" (change)="onFile($event, 'imagem')" />
     <button [disabled]="carregando('imagem')" (click)="analisarImagem()">
       @if (carregando('imagem')) {
@@ -69,7 +70,7 @@
 
   <!-- LAUDO -->
   <section class="grupo">
-    <label class="titulo">Laudo (.pdf)</label>
+    <label class="titulo">Laudo <span class="ext">.pdf</span></label>
     <input type="file" accept=".pdf" (change)="onFile($event, 'laudo')" />
     <button [disabled]="carregando('laudo')" (click)="analisarLaudo()">
       @if (carregando('laudo')) {
@@ -80,22 +81,20 @@
     </button>
   </section>
 
-  <div class="divisor"></div>
-
   <!-- FUSAO -->
-  <section class="grupo">
+  <section class="grupo fusao-bloco">
     <button class="fusao" [disabled]="carregando('fusao')" (click)="fundir()">
       @if (carregando('fusao')) {
         <span class="spinner"></span> Analisando…
       } @else {
-        🚨 Gerar alerta (fusão)
+        Gerar alerta multimodal
       }
     </button>
     <small>Combina texto + vídeo/imagem + laudo num único alerta à equipe.</small>
   </section>
 </aside>
 
-<!-- AREA CENTRAL -->
+<!-- FEED DE RESULTADOS -->
 <main class="conteudo">
   <header class="topo">
     <h2>Resultados</h2>
@@ -105,18 +104,28 @@
   </header>
 
   @if (!resultados().length) {
-    <p class="vazio">
-      Use os campos à esquerda para analisar cada modalidade, ou clique em
-      <strong>Gerar alerta (fusão)</strong> para o alerta multimodal.
-    </p>
+    <div class="vazio">
+      <span class="tele vazio-eyebrow">Aguardando entrada</span>
+      <p>
+        Analise cada modalidade no trilho à esquerda, ou clique em
+        <strong>Gerar alerta multimodal</strong> para consolidar tudo num alerta à equipe.
+      </p>
+    </div>
   }
 
   @for (item of resultados(); track item.id) {
     <div class="item">
       @if (item.carregando) {
-        <div class="placeholder">⏳ {{ item.titulo }} — analisando…</div>
+        <div class="placeholder">
+          <span class="spinner spinner-ink"></span>
+          <span><strong>{{ item.titulo }}</strong> — analisando…</span>
+        </div>
       } @else if (item.erro) {
-        <div class="erro"><strong>{{ item.titulo }}</strong><br />{{ item.erro }}</div>
+        <div class="erro">
+          <span class="tele erro-eyebrow">Falhou</span>
+          <strong>{{ item.titulo }}</strong>
+          <p>{{ item.erro }}</p>
+        </div>
       } @else if (item.resp) {
         <app-alerta-card [resp]="item.resp" [titulo]="item.titulo" [destaque]="item.destaque" />
       }

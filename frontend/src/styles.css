@@ -1,4 +1,55 @@
-/* Estilos globais minimos. O design fino fica por sua conta depois. */
+/* ============================================================
+   Sistema de design — "Triage console"
+   Ferramenta de apoio à decisão clínica (saúde da mulher).
+   Regra central: a cor de severidade (verde/âmbar/vermelho) é a
+   ÚNICA cor saturada da interface. Todo o "chrome" fica em petróleo
+   neutro para não competir com o sinal de severidade.
+   ============================================================ */
+:root {
+  /* superfícies */
+  --surface: #ebefee; /* papel clínico (fundo da página) */
+  --surface-raised: #ffffff; /* face dos cards */
+  --surface-sunken: #e2e8e7; /* campos/entradas */
+
+  /* tinta */
+  --ink: #17282b; /* texto principal (petróleo-ardósia) */
+  --ink-muted: #5c6e70; /* rótulos, legendas, meta */
+  --ink-faint: #8a9b9c; /* placeholders, desabilitado */
+  --line: #d3dbda; /* fios/bordas */
+
+  /* chrome / marca */
+  --chrome: #0e3a44; /* trilho de entrada (sidebar) + marca */
+  --chrome-2: #0a2b33; /* petróleo mais fundo (sombras/nós) */
+  --chrome-ink: #dceaea; /* texto sobre chrome */
+  --chrome-ink-muted: #7fa3a6; /* texto secundário sobre chrome */
+  --chrome-line: #1d4d57; /* fios sobre chrome */
+
+  /* interação (usado com parcimônia; fora do arco de severidade) */
+  --accent: #146a72;
+  --accent-hover: #10585f;
+  --accent-ink: #eafcfb;
+
+  /* severidade — único chroma da interface (mapeamento preservado) */
+  --sev-baixo: #1f7a4d;
+  --sev-baixo-wash: #e4f1ea;
+  --sev-medio: #b0730c;
+  --sev-medio-wash: #f6ecd9;
+  --sev-alto: #b4232a;
+  --sev-alto-wash: #f7e2e2;
+  --sev-neutro: #7f9294; /* sem severidade definida */
+
+  /* tipografia */
+  --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  /* forma */
+  --radius: 10px;
+  --radius-sm: 7px;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px rgba(14, 58, 68, 0.05), 0 6px 20px rgba(14, 58, 68, 0.06);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -8,8 +59,19 @@ body {
   padding: 0;
 }
 body {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
-  color: #0f172a;
-  background: #f8fafc;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--surface);
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* micro-rótulo de "telemetria clínica" reutilizável */
+.tele {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  font-weight: 500;
 }

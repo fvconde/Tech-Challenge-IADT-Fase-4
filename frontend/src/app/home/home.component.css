@@ -2,43 +2,119 @@
   display: block;
 }
 
-/* ---------- Sidebar fixa (scroll proprio, nao acompanha a pagina) ---------- */
+/* ============================================================
+   Trilho de entrada (intake) — chrome petróleo, scroll próprio
+   ============================================================ */
 .sidebar {
   position: fixed;
   top: 0;
   left: 0;
-  width: 340px;
+  width: 344px;
   height: 100vh;
   overflow-y: auto;
   box-sizing: border-box;
-  background: #0f172a;
-  color: #e2e8f0;
-  padding: 1.2rem 1rem 2rem;
+  background: var(--chrome);
+  color: var(--chrome-ink);
+  padding: 1.5rem 1.25rem 2.5rem;
+  border-right: 1px solid var(--chrome-2);
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--chrome-line) transparent;
+}
+/* Scrollbar do trilho — no tom petróleo do chrome (WebKit/Chromium) */
+.sidebar::-webkit-scrollbar {
+  width: 11px;
+}
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--chrome-line);
+  border-radius: var(--radius-pill);
+  border: 3px solid var(--chrome); /* "respiro" que afina o thumb e alinha ao fundo */
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
+/* textarea do relato também vive no chrome: mesmo tratamento */
+.grupo textarea {
+  scrollbar-width: thin;
+  scrollbar-color: var(--chrome-line) transparent;
+}
+.grupo textarea::-webkit-scrollbar {
+  width: 10px;
+}
+.grupo textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+.grupo textarea::-webkit-scrollbar-thumb {
+  background: var(--chrome-line);
+  border-radius: var(--radius-pill);
+  border: 3px solid var(--chrome-2);
+}
+.grupo textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* marca + selo "não é diagnóstico" (elemento ético, visual e não só texto) */
+.brand {
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--chrome-line);
+}
 .brand h1 {
   margin: 0;
-  font-size: 1.3rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+  color: #fff;
 }
 .brand p {
-  margin: 0.2rem 0 1rem;
-  font-size: 0.8rem;
-  color: #94a3b8;
+  margin: 0.15rem 0 0.9rem;
+  font-size: 0.82rem;
+  color: var(--chrome-ink-muted);
+}
+.stamp {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--chrome-ink);
+  border: 1px solid var(--chrome-line);
+  border-radius: var(--radius-sm);
+  padding: 0.32rem 0.55rem;
+  line-height: 1.1;
 }
 
+/* cada modalidade = um "canal" de entrada */
 .grupo {
-  margin-bottom: 1rem;
+  margin-bottom: 1.1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 .grupo .titulo {
-  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #93c5fd;
-  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: var(--chrome-ink);
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
 }
+.grupo .titulo .ext {
+  color: var(--chrome-ink-muted);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  font-size: 0.66rem;
+}
+
 .grupo textarea,
 .grupo input[type='file'] {
   width: 100%;
@@ -46,140 +122,258 @@
   font: inherit;
 }
 .grupo textarea {
-  border-radius: 6px;
-  border: 1px solid #334155;
-  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--chrome-line);
+  background: var(--chrome-2);
+  color: var(--chrome-ink);
+  padding: 0.6rem 0.65rem;
   resize: vertical;
+  font-size: 0.9rem;
+}
+.grupo textarea::placeholder {
+  color: var(--chrome-ink-muted);
+}
+.grupo textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
 }
 .grupo input[type='file'] {
-  font-size: 0.8rem;
-  color: #cbd5e1;
+  font-size: 0.78rem;
+  color: var(--chrome-ink-muted);
+}
+.grupo input[type='file']::file-selector-button {
+  font: inherit;
+  font-size: 0.74rem;
+  cursor: pointer;
+  margin-right: 0.6rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--chrome-line);
+  border-radius: var(--radius-sm);
+  background: var(--chrome-2);
+  color: var(--chrome-ink);
+  transition: background 0.15s ease;
+}
+.grupo input[type='file']::file-selector-button:hover {
+  background: #123c46;
 }
 
+/* botão de ação padrão (petróleo → accent no hover) */
 button {
   cursor: pointer;
-  border: none;
-  border-radius: 6px;
-  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.75rem;
   font: inherit;
   font-weight: 600;
-  background: #2563eb;
-  color: #fff;
+  font-size: 0.9rem;
+  background: transparent;
+  color: var(--accent-ink);
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 button:hover {
-  background: #1d4ed8;
+  background: var(--accent);
+}
+button:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}
+
+/* alavanca principal do console — em accent, NUNCA vermelho
+   (o vermelho fica reservado só para severidade "alto") */
+.fusao-bloco {
+  margin-top: 1.5rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--chrome-line);
 }
 button.fusao {
-  background: #b91c1c;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
   font-size: 1rem;
-  padding: 0.8rem;
+  padding: 0.85rem;
+  letter-spacing: -0.01em;
 }
 button.fusao:hover {
-  background: #991b1b;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 button[disabled] {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: progress;
 }
 .grupo small {
-  color: #94a3b8;
+  color: var(--chrome-ink-muted);
   font-size: 0.75rem;
+  line-height: 1.4;
 }
 
-/* spinner de carregamento (usado dentro dos botoes) */
+/* spinner dentro dos botões */
 .spinner {
   display: inline-block;
   width: 0.85em;
   height: 0.85em;
-  border: 2px solid rgba(255, 255, 255, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.35);
   border-top-color: #fff;
   border-radius: 50%;
   animation: girar 0.7s linear infinite;
   vertical-align: -0.15em;
   margin-right: 0.3rem;
 }
+.spinner-ink {
+  border-color: rgba(23, 40, 43, 0.2);
+  border-top-color: var(--accent);
+}
 @keyframes girar {
   to {
     transform: rotate(360deg);
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 1.4s;
+  }
+}
 
-/* botoes de "carregar exemplo" (discretos, abaixo do textarea) */
+/* botões de exemplo (discretos, sob o textarea) */
 .exemplos {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
 }
 .exemplos .rotulo-mini {
-  font-size: 0.72rem;
-  color: #94a3b8;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--chrome-ink-muted);
+  margin-right: 0.1rem;
 }
 .exemplos button {
-  background: #334155;
-  padding: 0.25rem 0.5rem;
+  background: transparent;
+  border-color: var(--chrome-line);
+  color: var(--chrome-ink);
+  padding: 0.28rem 0.55rem;
   font-size: 0.75rem;
+  font-weight: 500;
 }
 .exemplos button:hover {
-  background: #475569;
+  background: var(--chrome-2);
+  border-color: var(--chrome-ink-muted);
 }
 
-.divisor {
-  height: 1px;
-  background: #334155;
-  margin: 1.2rem 0;
-}
-
-/* ---------- Area central rolavel ---------- */
+/* ============================================================
+   Feed de resultados — papel clínico
+   ============================================================ */
 .conteudo {
-  margin-left: 340px;
-  padding: 1.5rem 2rem 3rem;
-  background: #f8fafc;
+  margin-left: 344px;
+  padding: 1.75rem 2.25rem 4rem;
+  background: var(--surface);
   min-height: 100vh;
 }
 .topo {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--line);
 }
 .topo h2 {
   margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+  color: var(--ink);
 }
 button.limpar {
-  background: #64748b;
+  background: transparent;
+  border-color: var(--line);
+  color: var(--ink-muted);
 }
 button.limpar:hover {
-  background: #475569;
+  background: var(--surface-sunken);
+  border-color: var(--ink-muted);
+  color: var(--ink);
 }
 
+/* estado vazio — convite à ação, não decoração */
 .vazio {
-  color: #64748b;
-  background: #fff;
-  border: 1px dashed #cbd5e1;
-  border-radius: 10px;
-  padding: 1.5rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.75rem;
+  max-width: 560px;
+}
+.vazio-eyebrow {
+  display: block;
+  color: var(--ink-faint);
+  margin-bottom: 0.5rem;
+}
+.vazio p {
+  margin: 0;
+  color: var(--ink-muted);
+}
+.vazio strong {
+  color: var(--ink);
+}
+
+.item {
+  animation: surgir 0.32s ease both;
+}
+@keyframes surgir {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .item {
+    animation: none;
+  }
 }
 
 .placeholder {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--sev-neutro);
+  border-radius: var(--radius);
   padding: 1rem 1.2rem;
-  margin-bottom: 1rem;
-  color: #475569;
-}
-.erro {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
-  border-radius: 10px;
-  padding: 1rem 1.2rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.1rem;
+  color: var(--ink-muted);
 }
 
-/* responsivo simples: em telas estreitas a sidebar vira topo */
-@media (max-width: 720px) {
+/* erro — direciona, não se desculpa */
+.erro {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--sev-alto);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.1rem;
+}
+.erro-eyebrow {
+  display: block;
+  color: var(--sev-alto);
+  margin-bottom: 0.3rem;
+}
+.erro strong {
+  color: var(--ink);
+}
+.erro p {
+  margin: 0.3rem 0 0;
+  color: var(--ink-muted);
+}
+
+/* responsivo: em telas estreitas o trilho vira topo */
+@media (max-width: 760px) {
   .sidebar {
     position: static;
     width: 100%;
@@ -187,5 +381,6 @@ button.limpar:hover {
   }
   .conteudo {
     margin-left: 0;
+    padding: 1.25rem 1.1rem 3rem;
   }
 }
