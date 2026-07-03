@@ -28,7 +28,7 @@ def test_combinar_categorias_corroboracao_multimodal():
     assert len(comb) == 1
     c = comb[0]
     assert c.score == round(min(1.0, 0.6 + BOOST_CORROBORACAO), 3)
-    assert any("corroboracao" in e for e in c.evidencias)
+    assert any("corroboração" in e for e in c.evidencias)
     assert "texto: ansiosa" in c.evidencias and "video: sinal X" in c.evidencias
 
 
@@ -62,6 +62,32 @@ def test_fusion_texto_mais_video():
     assert "objeto_suspeito_automutilacao" in cats
     assert b["nivel_alerta"] == "alto"
     assert b["deteccoes_video"] is not None
+
+
+def test_fusion_imagem_gera_categoria_e_repassa_anotada():
+    # regressao: quando o video/imagem detecta uma classe-foco, a FUSAO deve
+    # (1) gerar a categoria de risco visual e (2) repassar a imagem anotada no
+    # response (o card da fusao exibe a mesma imagem do card isolado).
+    app.dependency_overrides[get_video] = lambda: MockVideoAdapter(
+        deteccoes=[DeteccaoVisual("scissors", 0.85, 0)],
+        imagem_anotada_b64="ZmFrZQ==",  # "fake" em base64
+    )
+    try:
+        r = client.post(
+            "/api/fusion/analyze",
+            data={"texto": "vim para a consulta de rotina, estou tranquila"},
+            files={"video_arquivo": ("foto.jpg", b"fake-img", "image/jpeg")},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    b = r.json()
+    assert set(b["modalidades"]) == {"texto", "video"}
+    cats = {c["categoria"] for c in b["categorias_risco"]}
+    assert "objeto_suspeito_automutilacao" in cats
+    assert b["nivel_alerta"] == "alto"  # categoria critica -> alto
+    assert b["imagem_anotada_b64"] == "ZmFrZQ=="  # anotada presente na fusao
 
 
 def test_fusion_somente_texto():

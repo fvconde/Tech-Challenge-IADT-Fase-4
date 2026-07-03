@@ -4,6 +4,22 @@
 > dado** e os **resultados reais** obtidos. As decisões de LGPD, custo e nuvem estão em
 > [decisoes-arquiteturais.md](decisoes-arquiteturais.md).
 
+## 0. Conformidade com o brief (auditoria)
+
+Os **três itens obrigatórios** do desafio, e onde cada um é atendido:
+
+| Item obrigatório do brief                         | Onde no relatório | Status |
+|---------------------------------------------------|-------------------|--------|
+| **(a)** Fluxo multimodal                          | §2 (diagrama + endpoints) e §5 (regra de fusão) | ✅ |
+| **(b)** Modelos por tipo de dado                  | §3 (tabela por modalidade), §4 (YOLOv8), §4b (OCR + sumarização) | ✅ |
+| **(c)** Resultados reais + exemplos de anomalias  | §6 (saídas reais, **composição de demo validada** com 3 modalidades, ROUGE, detecções YOLOv8 reais) | ✅ |
+
+Requisitos de escopo da versão "Secretaria": **3 funcionalidades** (áudio, vídeo/YOLOv8,
+nuvem — exige ≥2) e **4 objetivos** (risco materno/ginecológico, violência, bem-estar
+psicológico, nuvem — exige ≥3). YOLOv8 **obrigatório**: atendido com detecção real
+(§4, §6). Detalhes de LGPD/custo/nuvem em
+[decisoes-arquiteturais.md](decisoes-arquiteturais.md).
+
 ## 1. Visão geral da solução
 
 IA multimodal de **apoio à decisão clínica** em saúde e segurança da mulher. Processa
@@ -127,9 +143,10 @@ carrega as **evidências** que o motivaram.
 - Imagem `demo_yolo.jpg`: detectou `bus`, `person`×4, `stop sign` → nenhuma classe-foco
   → risco **baixo** (correto).
 - Vídeo `video_exemplo.mp4` (20 frames, 4 amostrados): detectou `bus`/`person` → **baixo**.
-- Caminho **alto** (objeto-foco): coberto pelos testes com `MockVideoAdapter`
-  (`knife`/`scissors` → `objeto_suspeito_automutilacao` → alerta **alto**). Para um demo
-  "alto" com modelo real, usar um clipe/imagem contendo faca ou tesoura.
+- Imagem `tesoura.jpg` (**detecção YOLOv8 real**): detectou `scissors` (**conf 0,85**),
+  `person` e mais 2 `scissors` → classe-foco → `objeto_suspeito_automutilacao`
+  (**score 0,848**) → alerta **alto**, com **imagem anotada** (bounding boxes) no response.
+  É o caso "alto" com modelo real usado na demo.
 
 **Laudo** (smoke real do `LocalOcrAdapter` no PDF sintético `laudo_exemplo.pdf`):
 
@@ -137,10 +154,27 @@ carrega as **evidências** que o motivaram.
 - Risco: `ansiedade` (1.0) + `depressao_pos_parto` (0.333), sentimento negativo → **alto**.
 - Resumo gerado e devolvido na resposta.
 
-**Fusão** (`/api/fusion/analyze`):
-- texto de violência + vídeo com `knife` → `["texto","video"]`,
-  `violencia_domestica` + `objeto_suspeito_automutilacao`, **alto**.
-- texto de violência + laudo de pós-parto → `["texto","laudo"]`, **alto**.
+**Fusão — composição de demo validada** (`/api/fusion/analyze`, saída real):
+
+Entradas: **texto** = relato de pós-parto (exemplo "Pós-parto"); **imagem** =
+`tesoura.jpg`; **laudo** = `laudo_exemplo.pdf` (pós-parto). Resultado:
+`modalidades: ["texto","video","laudo"]`, nível **ALTO**.
+
+| Categoria                        | Score | Origem / evidência                                   |
+|----------------------------------|-------|------------------------------------------------------|
+| `depressao_pos_parto`            | 1,000 | texto + laudo — **corroboração multimodal (2 modalidades)** |
+| `ansiedade`                      | 1,000 | texto + laudo — **corroboração multimodal (2 modalidades)** |
+| `objeto_suspeito_automutilacao`  | 0,848 | vídeo — `scissors` (conf 0,85) + **imagem anotada**  |
+| `violencia_domestica`            | 0,333 | **falso positivo** do léxico (só texto; ver §7)      |
+| `fadiga_hormonal`                | 0,333 | texto — `"exausta"`                                  |
+
+Este é o **exemplo de anomalia** central do desafio: três tipos de dado diferentes
+(texto, imagem, documento) convergindo em **um alerta único, priorizado e rastreável**.
+A **corroboração** (texto+laudo apontando a mesma categoria) eleva os scores a 1,0, e a
+categoria **crítica** de vídeo garante o nível **alto** — enquanto o falso positivo fica
+com score baixo e sem corroboração, demonstrando que a **priorização separa sinal de
+ruído**. Casos "alto" adicionais (violência + objeto de vídeo etc.) são cobertos pelos
+testes automatizados.
 
 **Nuvem (resultado real, smoke contra a conta AWS):**
 - **S3:** ✅ upload + leitura + limpeza do laudo sintético OK.
@@ -148,7 +182,7 @@ carrega as **evidências** que o motivaram.
   cobrança**) → o `NlpPort` cai no `LocalNlpAdapter` sem perda de função. **Prova de
   degradação graciosa** do padrão ports/adapters, validada contra a AWS real.
 
-**Testes:** 29 casos automatizados passando (`pytest backend/tests`).
+**Testes:** 30 casos automatizados passando (`pytest backend/tests`).
 
 ## 7. Conformidade e limitações
 
@@ -163,6 +197,13 @@ carrega as **evidências** que o motivaram.
 - distilbart-cnn é treinado em inglês; resumo em português é aproximado.
 - Léxico/classificador são propositais e **explicáveis**, mas têm cobertura limitada;
   não substituem avaliação profissional.
+- **Falso positivo conhecido do léxico:** por priorizar explicabilidade, uma
+  expressão-gatilho pode disparar uma categoria fora de contexto. Ex. real (aparece na
+  composição de demo): `"vergonha de contar"` levanta `violencia_domestica` (score baixo,
+  0,33) num relato de pós-parto. O alerta é transparente (mostra a evidência), fica com
+  score baixo e **sem corroboração**, e cabe à equipe validar — coerente com a postura de
+  **apoio à decisão, não diagnóstico**. Detalhe e mitigações em
+  [decisoes-arquiteturais.md](decisoes-arquiteturais.md) §5.
 - Vídeo usa modelo pré-treinado em classes COCO (proxy). Fine-tuning é melhoria futura.
 
 ## 8. Como reproduzir

@@ -38,30 +38,30 @@ CATEGORIAS_CRITICAS = {"violencia_domestica", "objeto_suspeito_automutilacao"}
 # Acao recomendada por categoria (texto para a equipe especializada).
 ACAO_POR_CATEGORIA: dict[str, str] = {
     "violencia_domestica": (
-        "ALERTA PRIORITARIO: indicios de violencia domestica. Acionar protocolo "
-        "institucional de violencia, oferecer escuta protegida e privada, e acionar "
-        "servico social/seguranca conforme fluxo. NAO confrontar acompanhante."
+        "ALERTA PRIORITÁRIO: indícios de violência doméstica. Acionar protocolo "
+        "institucional de violência, oferecer escuta protegida e privada, e acionar "
+        "serviço social/segurança conforme fluxo. NÃO confrontar acompanhante."
     ),
     "objeto_suspeito_automutilacao": (
-        "ALERTA PRIORITARIO: objeto potencialmente perigoso detectado no video "
-        "(proxy de risco de automutilacao). Acionar avaliacao de seguranca e saude "
+        "ALERTA PRIORITÁRIO: objeto potencialmente perigoso detectado no vídeo "
+        "(proxy de risco de automutilação). Acionar avaliação de segurança e saúde "
         "mental, garantir ambiente seguro e revisar o(s) frame(s) sinalizado(s)."
     ),
     "depressao_pos_parto": (
-        "Encaminhar para avaliacao em saude mental perinatal (psicologia/psiquiatria). "
+        "Encaminhar para avaliação em saúde mental perinatal (psicologia/psiquiatria). "
         "Aplicar instrumento de rastreio (ex.: EPDS) com a equipe."
     ),
     "ansiedade": (
-        "Sinalizar a equipe para acolhimento e avaliacao de quadro ansioso; "
-        "considerar apoio psicologico."
+        "Sinalizar à equipe para acolhimento e avaliação de quadro ansioso; "
+        "considerar apoio psicológico."
     ),
     "fadiga_hormonal": (
-        "Sugerir avaliacao clinica/hormonal pela equipe (investigar causas de fadiga)."
+        "Sugerir avaliação clínica/hormonal pela equipe (investigar causas de fadiga)."
     ),
 }
 
 ACAO_SEM_RISCO = (
-    "Sem indicios de risco relevantes nesta analise. Manter acompanhamento de rotina."
+    "Sem indícios de risco relevantes nesta análise. Manter acompanhamento de rotina."
 )
 
 
@@ -105,7 +105,7 @@ def combinar_categorias(
         if n >= 2:
             d = combinadas[cat]
             d.score = round(min(1.0, d.score + BOOST_CORROBORACAO), 3)
-            d.evidencias.append(f"corroboracao multimodal ({n} modalidades)")
+            d.evidencias.append(f"corroboração multimodal ({n} modalidades)")
 
     resultado = list(combinadas.values())
     resultado.sort(key=lambda d: d.score, reverse=True)
@@ -128,7 +128,7 @@ def avaliar_alerta(
         if sentimento.score <= -0.5:
             return (
                 NivelAlerta.medio,
-                "Sentimento predominantemente negativo, sem categoria especifica. "
+                "Sentimento predominantemente negativo, sem categoria específica. "
                 "Recomenda-se acolhimento e escuta ativa pela equipe.",
             )
         return NivelAlerta.baixo, ACAO_SEM_RISCO

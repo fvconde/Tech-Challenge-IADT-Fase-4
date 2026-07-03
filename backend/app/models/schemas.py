@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 # Aviso etico padrao anexado a TODA resposta de analise.
 AVISO_PADRAO = (
-    "Apoio a decisao clinica. NAO e diagnostico. "
+    "Apoio à decisão clínica. NÃO é diagnóstico. "
     "Resultado deve ser avaliado pela equipe especializada."
 )
 

@@ -88,6 +88,32 @@ Google**. Portanto:
 - **Melhoria futura:** fine-tuning em objetos clínicos reais; adicionar pose (MediaPipe)
   e emoção facial (DeepFace) como sinais visuais extras na mesma fusão.
 
+### Falso positivo conhecido do léxico (limitação honesta)
+
+A detecção de risco por **léxico** (`services/text/risk_lexicon.py`) é proposital —
+prioriza **explicabilidade** (cada alerta mostra a expressão que o motivou). O custo
+disso é a falta de contexto: uma expressão-gatilho pode disparar uma categoria **fora
+do contexto pretendido**.
+
+**Exemplo real (aparece na composição de demo):** o gatilho `"vergonha de contar"`
+(pensado para relatos de violência) também aparece em textos de **sofrimento
+psíquico** legítimo. No relato de pós-parto usado na demo, a frase *"tenho vergonha de
+contar isso pra alguém"* faz o sistema levantar `violencia_domestica` (score baixo,
+**0,33**, só do texto), ao lado das categorias corretas de pós-parto.
+
+**Por que isso NÃO é um defeito grave (e reforça a postura do projeto):**
+- O alerta é **transparente**: a evidência exibida é exatamente `"tenho vergonha de
+  contar"`, então a equipe **vê a origem** e descarta em segundos.
+- É a razão de o sistema ser **apoio à decisão, não diagnóstico**: quem valida é o
+  profissional. O sistema prefere **errar sinalizando a mais** (recall) a silenciar.
+- O score fica **baixo** e **sem corroboração multimodal** (só 1 modalidade), enquanto
+  as categorias verdadeiras (`depressao_pos_parto`, `ansiedade`) sobem a **1,0** com
+  boost de corroboração — a priorização já separa o sinal do ruído.
+
+**Mitigações futuras previstas:** o `classifier.py` (TF-IDF + Naive Bayes) já complementa
+o léxico com uma visão estatística; janelas de contexto/negação e um modelo de linguagem
+PT-BR reduziriam esses gatilhos soltos sem perder a explicabilidade.
+
 ## 6. Laudos (OCR) e sumarização
 
 - **OCR sem Textract.** `LocalOcrAdapter` extrai texto em cascata **pdfplumber → PyMuPDF →

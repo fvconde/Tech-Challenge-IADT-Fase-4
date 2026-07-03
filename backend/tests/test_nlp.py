@@ -46,4 +46,4 @@ def test_consulta_rotina_sem_risco():
 
 def test_resposta_sempre_tem_aviso_etico():
     r = analisar_texto("texto qualquer", nlp)
-    assert "NAO e diagnostico" in r.aviso
+    assert "NÃO é diagnóstico" in r.aviso
