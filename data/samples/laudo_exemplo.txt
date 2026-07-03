@@ -1,9 +1,16 @@
-LAUDO DE ACOMPANHAMENTO POS-PARTO (DOCUMENTO SINTETICO - SEM DADOS REAIS)
+LAUDO DE ACOMPANHAMENTO PÓS-PARTO (DOCUMENTO SINTÉTICO - SEM DADOS REAIS)
 
-Paciente do sexo feminino, 29 anos, em acompanhamento pos-parto de 8 semanas. Queixa principal: a paciente refere que chora o dia todo, sente-se um fracasso e relata insonia e cansaco intenso desde que o bebe nasceu. Refere ainda muita ansiedade, com coracao acelerado e aperto no peito em varios momentos do dia.
+Paciente do sexo feminino, 29 anos, em acompanhamento pós-parto de 8 semanas.
 
-Exame fisico sem alteracoes significativas. Pressao arterial de 120 por 80 mmHg. Mamas sem nodulos palpaveis e abdome indolor. Nao ha sinais de sangramento anormal.
+Queixa principal: a paciente refere choro frequente ao longo do dia, sentimento
+de fracasso enquanto mãe e relata insônia e cansaço intenso desde o nascimento
+do bebê. Refere ainda ansiedade acentuada, com coração acelerado e aperto no
+peito em vários momentos do dia.
 
-Hipotese: sinais compativeis com sofrimento psiquico no puerperio, a investigar. Conduta: paciente orientada a procurar a equipe de saude mental perinatal para avaliacao especializada e acompanhamento.
+Histórico: gestação e parto sem intercorrências relevantes registradas em
+prontuário. Paciente nega uso de medicação psiquiátrica prévia.
 
-Observacao: este e um documento ficticio, gerado apenas para teste do sistema multimodal de apoio a decisao. Nenhum dado real de paciente foi utilizado.
+Impressão clínica: quadro sugestivo de sofrimento psíquico no puerpério,
+compatível com sinais de depressão pós-parto e ansiedade. Recomenda-se
+encaminhamento para avaliação especializada (psicologia/psiquiatria) e
+reavaliação em consulta de retorno.

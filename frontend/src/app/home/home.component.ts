@@ -53,14 +53,22 @@ export class HomeComponent {
   // relatos sinteticos de exemplo (sem PHI) para preencher o textarea rapidamente
   private readonly exemplos: Record<'posparto' | 'violencia' | 'rotina', string> = {
     posparto:
-      'Desde que o bebê nasceu eu choro o dia todo e me sinto um fracasso. Não ' +
-      'consigo cuidar do bebê direito, estou exausta e triste, e sinto muita culpa.',
+      'Desde que o bebê nasceu, há oito semanas, eu choro o dia todo sem motivo ' +
+      'aparente e me sinto um fracasso como mãe. Não consigo dormir direito mesmo ' +
+      'quando ele está dormindo, fico exausta o dia inteiro. Sinto uma ansiedade ' +
+      'forte, com o coração acelerado, e às vezes um aperto no peito. Tenho ' +
+      'vergonha de contar isso pra alguém.',
     violencia:
-      'Eu tenho medo dele em casa. Semana passada ele me empurrou e me ameaçou. Ele ' +
-      'me controla, não posso sair de casa, e eu tenho vergonha de contar para alguém.',
+      'Meu marido não gosta que eu saia de casa sozinha e sempre pergunta onde ' +
+      'estive e com quem falei. Nas últimas semanas ele tem levantado a voz e me ' +
+      'chamado de incompetente na frente das crianças. Da última vez que ' +
+      'discutimos ele apertou meu braço com força e ainda está com marca. Tenho ' +
+      'medo da reação dele quando eu chegar em casa hoje.',
     rotina:
-      'Vim só para a consulta de rotina e buscar o resultado do exame. Estou me ' +
-      'sentindo bem e tranquila, apoiada pela família, e queria tirar uma dúvida.',
+      'Vim para a consulta de acompanhamento de rotina do terceiro trimestre. ' +
+      'Estou me sentindo bem, sem dores ou desconfortos incomuns. O bebê está ' +
+      'mexendo normalmente e durmo razoavelmente bem. Só queria confirmar os ' +
+      'exames de pressão e revisar a data provável do parto.',
   };
 
   carregarExemplo(tipo: 'posparto' | 'violencia' | 'rotina'): void {
