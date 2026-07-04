@@ -58,6 +58,9 @@ alerta único. Endpoints: `/api/text/analyze`, `/api/audio/analyze`, `/api/video
 | Texto      | Extração de entidades (regex)             | (próprio)             | ✅     |
 | Áudio      | Transcrição fala→texto                     | SpeechRecognition (recognize_google) | ⚠️ envia ao Google |
 | Vídeo      | Detecção de objetos                        | ultralytics (YOLOv8n) | ✅     |
+| Vídeo      | Pose / atividade corporal (opt-in)         | MediaPipe (Tasks API `PoseLandmarker`) | ✅ (baixa modelo `.task` 1×) |
+| Vídeo      | Emoção facial (opt-in)                      | DeepFace              | ✅ (baixa pesos 1×) |
+| Vídeo      | Trilha de áudio → transcrição (opt-in)     | MoviePy (+ SpeechRecognition) | ⚠️ trilha vai ao Google se ativa |
 | Laudo      | Extração de texto de PDF (OCR)             | pdfplumber / PyMuPDF / pytesseract | ✅ (sem Textract) |
 | Laudo      | Sumarização abstrativa                     | transformers (distilbart-cnn) | ✅ |
 | Nuvem      | Armazenamento (**usado**)                  | Amazon S3             | ☁️ ✅ funciona |
@@ -111,11 +114,34 @@ alerta único. Endpoints: `/api/text/analyze`, `/api/audio/analyze`, `/api/video
   > Nota: distilbart-cnn é treinado em **inglês** (CNN/DailyMail); em português o resumo é
   > aproximado e o ROUGE tende a ser modesto. O número serve de baseline reprodutível.
 
+## 4c. Vídeo multimodal: pose (MediaPipe), emoção (DeepFace) e trilha de áudio (MoviePy)
+
+O endpoint `/api/video/analyze` é um analisador **multimodal** do mesmo arquivo — YOLO
+(sempre) + três técnicas **opt-in**, cada uma atrás de um Port com adapter local + mock:
+
+- **Pose / atividade (MediaPipe → `PosePort` → `pose_rules.py`):** os 33 landmarks viram
+  **sinais corporais** por heurísticas conservadoras (`maos_proximas_ao_rosto`,
+  `maos_juntas_ao_corpo`) → categoria `sinal_corporal_estresse`.
+- **Emoção facial (DeepFace → `EmotionPort` → `emotion_rules.py`):** só emoções
+  **negativas** (`sad`/`fear`/`angry`/`disgust`) acima do limiar viram
+  `sinal_emocional_negativo`. Emoções positivas não geram risco.
+- **Trilha de áudio (MoviePy → `TranscriptionPort` → NLP):** extrai o áudio do vídeo,
+  transcreve e reusa **todo** o pipeline de texto, virando a modalidade `audio` na fusão.
+
+**Padrão de custo/segurança:** defaults `POSE_BACKEND=mock`, `EMOTION_BACKEND=mock`,
+`VIDEO_TRANSCREVER_AUDIO=false` → o app sobe e o endpoint se comporta como antes (só YOLO)
+**sem** exigir as libs pesadas. Ativação na demo: `POSE_BACKEND=local`,
+`EMOTION_BACKEND=local`, `VIDEO_TRANSCREVER_AUDIO=true`. Cada técnica é **isolada**: falha
+de uma (lib ausente, sem rosto, sem trilha) não derruba as demais. **Nenhum diagnóstico:**
+pose e emoção são categorias de severidade **média** (não críticas), só indícios para a equipe.
+
 ## 5. Categorias de risco e regra de fusão
 
 Categorias monitoradas: `depressao_pos_parto`, `ansiedade`, `violencia_domestica`,
-`fadiga_hormonal` (texto/áudio) e `objeto_suspeito_automutilacao` (vídeo). Cada alerta
-carrega as **evidências** que o motivaram.
+`fadiga_hormonal` (texto/áudio), `objeto_suspeito_automutilacao` (vídeo/YOLO) e — quando as
+técnicas opt-in estão ativas — `sinal_corporal_estresse` (vídeo/pose) e
+`sinal_emocional_negativo` (vídeo/emoção). Cada alerta carrega as **evidências** que o
+motivaram.
 
 **Regra de fusão multimodal** (`services/fusion/alerts.py` + `multimodal.py`):
 1. Cada modalidade produz uma lista de `DeteccaoCategoria` (mesmo tipo de dado).

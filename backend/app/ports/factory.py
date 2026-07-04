@@ -21,15 +21,19 @@ import logging
 
 from backend.app.core.config import get_settings
 from backend.app.ports.base import (
+    EmotionPort,
     NlpPort,
     OcrPort,
+    PosePort,
     StoragePort,
     SummarizerPort,
     TranscriptionPort,
     VideoPort,
 )
+from backend.app.ports.emotion import LocalEmotionAdapter, MockEmotionAdapter
 from backend.app.ports.nlp import ComprehendAdapter, LocalNlpAdapter
 from backend.app.ports.ocr import LocalOcrAdapter, MockOcrAdapter
+from backend.app.ports.pose import LocalPoseAdapter, MockPoseAdapter
 from backend.app.ports.storage import LocalStorageAdapter, S3StorageAdapter
 from backend.app.ports.summarizer import (
     ExtractiveSummarizerAdapter,
@@ -87,6 +91,24 @@ def get_video() -> VideoPort:
         return MockVideoAdapter()
     logger.info("VideoPort -> LocalVideoAdapter (YOLOv8 %s)", settings.video_model)
     return LocalVideoAdapter(modelo=settings.video_model)
+
+
+def get_pose() -> PosePort:
+    settings = get_settings()
+    if settings.pose_backend == "local":
+        logger.info("PosePort -> LocalPoseAdapter (MediaPipe Tasks, %s)", settings.pose_model)
+        return LocalPoseAdapter(modelo=settings.pose_model)
+    logger.info("PosePort -> MockPoseAdapter (offline)")
+    return MockPoseAdapter()
+
+
+def get_emotion() -> EmotionPort:
+    settings = get_settings()
+    if settings.emotion_backend == "local":
+        logger.info("EmotionPort -> LocalEmotionAdapter (DeepFace)")
+        return LocalEmotionAdapter()
+    logger.info("EmotionPort -> MockEmotionAdapter (offline)")
+    return MockEmotionAdapter()
 
 
 def get_ocr() -> OcrPort:

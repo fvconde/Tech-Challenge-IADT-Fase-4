@@ -19,15 +19,19 @@ from backend.app.api.routers.video import EXTENSOES_SUPORTADAS, _sufixo
 from backend.app.core.config import get_settings
 from backend.app.models.schemas import AnaliseRiscoResponse
 from backend.app.ports.base import (
+    EmotionPort,
     NlpPort,
     OcrPort,
+    PosePort,
     StoragePort,
     SummarizerPort,
     VideoPort,
 )
 from backend.app.ports.factory import (
+    get_emotion,
     get_nlp,
     get_ocr,
+    get_pose,
     get_storage,
     get_summarizer,
     get_video,
@@ -55,6 +59,8 @@ async def analisar(
     ),
     nlp: NlpPort = Depends(get_nlp),
     video: VideoPort = Depends(get_video),
+    pose: PosePort = Depends(get_pose),
+    emotion: EmotionPort = Depends(get_emotion),
     ocr: OcrPort = Depends(get_ocr),
     summarizer: SummarizerPort = Depends(get_summarizer),
     storage: StoragePort = Depends(get_storage),
@@ -82,9 +88,11 @@ async def analisar(
     if tem_texto:
         categorias_texto, nlp_result = extrair_categorias_e_nlp(texto, nlp)
 
-    # ----- modalidade video -----
-    categorias_video = None
-    video_result = None
+    # ----- modalidade video (YOLO + pose + emocao; a trilha de audio NAO e
+    # transcrita aqui porque este endpoint ja tem um campo 'texto' proprio) -----
+    categorias_video = video_result = None
+    categorias_pose = pose_result = None
+    categorias_emocao = emotion_result = None
     if tem_video:
         nome = video_arquivo.filename or "video.mp4"
         if _sufixo(nome) not in EXTENSOES_SUPORTADAS:
@@ -95,7 +103,7 @@ async def analisar(
         conteudo = await video_arquivo.read()
         if not conteudo:
             raise HTTPException(status_code=400, detail="Arquivo de video vazio.")
-        video_result, categorias_video = analisar_video(
+        bundle = analisar_video(
             nome_arquivo=nome,
             conteudo=conteudo,
             video=video,
@@ -103,7 +111,15 @@ async def analisar(
             amostragem=s.video_frame_sample,
             conf=s.video_conf_threshold,
             storage=storage,
+            pose=pose,
+            emotion=emotion,
         )
+        categorias_video = bundle.categorias_video
+        video_result = bundle.video_result
+        categorias_pose = bundle.categorias_pose
+        pose_result = bundle.pose_result
+        categorias_emocao = bundle.categorias_emocao
+        emotion_result = bundle.emotion_result
 
     # ----- modalidade laudo -----
     categorias_laudo = None
@@ -136,6 +152,10 @@ async def analisar(
         nlp_result=nlp_result,
         categorias_video=categorias_video,
         video_result=video_result,
+        categorias_pose=categorias_pose,
+        pose_result=pose_result,
+        categorias_emocao=categorias_emocao,
+        emotion_result=emotion_result,
         categorias_laudo=categorias_laudo,
         nlp_laudo=nlp_laudo,
         texto_documento=texto_documento,

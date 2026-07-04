@@ -89,6 +89,49 @@ class VideoAnalysisResult:
 
 
 @dataclass
+class DeteccaoPose:
+    """
+    Um sinal corporal (postura/gesto) detectado num frame via MediaPipe Pose.
+
+    NAO e diagnostico: e um indicio observavel (ex.: bracos protegendo o rosto,
+    corpo encolhido) que a equipe deve avaliar. O texto do 'sinal' e legivel para
+    virar evidencia rastreavel na fusao.
+    """
+    sinal: str                   # ex.: "bracos_protegendo_rosto", "corpo_encolhido"
+    confianca: float             # 0.0 .. 1.0 (heuristica sobre os landmarks)
+    frame: int = 0               # indice do frame onde apareceu (0 para imagem)
+
+
+@dataclass
+class PoseAnalysisResult:
+    """Resultado da analise de POSE/atividade de um video/imagem (MediaPipe)."""
+    sinais: list[DeteccaoPose] = field(default_factory=list)
+    frames_analisados: int = 0   # quantos frames foram efetivamente processados
+    backend: str = "local"       # qual adapter produziu (ex.: "local_mediapipe")
+
+
+@dataclass
+class DeteccaoEmocao:
+    """
+    Emocao facial dominante detectada num frame via DeepFace.
+
+    NAO e diagnostico: e a emocao aparente do rosto naquele instante. Emocoes
+    negativas sustentadas (tristeza/medo/raiva) viram indicio para a equipe.
+    """
+    emocao: str                  # ex.: "sad", "fear", "angry", "happy", "neutral"
+    score: float                 # 0.0 .. 1.0 (confianca da emocao dominante)
+    frame: int = 0               # indice do frame onde apareceu (0 para imagem)
+
+
+@dataclass
+class EmotionAnalysisResult:
+    """Resultado da analise de EMOCAO facial de um video/imagem (DeepFace)."""
+    emocoes: list[DeteccaoEmocao] = field(default_factory=list)
+    frames_analisados: int = 0   # quantos frames foram efetivamente processados
+    backend: str = "local"       # qual adapter produziu (ex.: "local_deepface")
+
+
+@dataclass
 class OcrResult:
     """Resultado da extracao de texto de um documento (PDF de laudo)."""
     texto: str
@@ -148,6 +191,32 @@ class VideoPort(ABC):
           documentacao/contexto no resultado.
         - amostragem: em videos, processa 1 frame a cada N (reduz custo).
         - conf: confianca minima para considerar uma deteccao.
+        """
+
+
+class PosePort(ABC):
+    """Analise de POSE/atividade corporal em video/imagem (MediaPipe)."""
+
+    @abstractmethod
+    def analisar(self, caminho: str, amostragem: int = 15) -> PoseAnalysisResult:
+        """
+        Detecta sinais corporais (postura/gesto) em uma imagem ou video.
+
+        - caminho: arquivo local (imagem ou video).
+        - amostragem: em videos, processa 1 frame a cada N (reduz custo).
+        """
+
+
+class EmotionPort(ABC):
+    """Analise de EMOCAO facial em video/imagem (DeepFace)."""
+
+    @abstractmethod
+    def analisar(self, caminho: str, amostragem: int = 15) -> EmotionAnalysisResult:
+        """
+        Detecta a emocao facial dominante em uma imagem ou video.
+
+        - caminho: arquivo local (imagem ou video).
+        - amostragem: em videos, processa 1 frame a cada N (reduz custo).
         """
 
 

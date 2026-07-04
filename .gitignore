@@ -21,6 +21,7 @@ env/
 *.pth
 *.bin
 *.h5
+*.task         # modelo MediaPipe Pose (baixado sob demanda)
 # Ancorado na raiz (/) para NAO ignorar backend/app/models/ (schemas Pydantic).
 /models/
 /weights/

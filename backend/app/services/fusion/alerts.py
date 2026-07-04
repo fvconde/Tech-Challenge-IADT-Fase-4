@@ -58,6 +58,16 @@ ACAO_POR_CATEGORIA: dict[str, str] = {
     "fadiga_hormonal": (
         "Sugerir avaliação clínica/hormonal pela equipe (investigar causas de fadiga)."
     ),
+    "sinal_emocional_negativo": (
+        "Vídeo indica emoção facial negativa aparente (tristeza/medo/raiva). "
+        "Sinalizar à equipe para acolhimento e escuta ativa; NÃO é diagnóstico, "
+        "apenas um indício a ser observado no contexto da consulta."
+    ),
+    "sinal_corporal_estresse": (
+        "Vídeo indica sinais corporais de tensão/proteção (postura/gestos). "
+        "Sinalizar à equipe para observação e escuta acolhedora; NÃO é diagnóstico, "
+        "apenas um indício comportamental a ser considerado com cautela."
+    ),
 }
 
 ACAO_SEM_RISCO = (
