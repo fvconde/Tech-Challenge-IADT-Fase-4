@@ -65,6 +65,21 @@ class DeteccaoVisualSchema(BaseModel):
     frame: int = Field(description="Indice do frame (0 para imagem)")
 
 
+class DeteccaoPoseSchema(BaseModel):
+    sinal: str = Field(
+        description="Sinal corporal detectado (ex.: maos_proximas_ao_rosto). "
+        "NAO e diagnostico, apenas indicio observavel."
+    )
+    confianca: float = Field(description="0.0 a 1.0")
+    frame: int = Field(description="Indice do frame (0 para imagem)")
+
+
+class DeteccaoEmocaoSchema(BaseModel):
+    emocao: str = Field(description="Emocao facial aparente (ex.: sad, fear, happy)")
+    score: float = Field(description="0.0 a 1.0 - confianca da emocao dominante")
+    frame: int = Field(description="Indice do frame (0 para imagem)")
+
+
 # --------------------------- Response ---------------------------
 class AnaliseRiscoResponse(BaseModel):
     """Resposta unificada de analise (texto, audio, video ou multimodal)."""
@@ -88,6 +103,10 @@ class AnaliseRiscoResponse(BaseModel):
         default=None,
         description="Imagem com bounding boxes do YOLOv8 (JPEG em base64), quando ha video/imagem.",
     )
+    # detalhes de pose (apenas quando a analise de pose roda - POSE_BACKEND=local)
+    deteccoes_pose: list[DeteccaoPoseSchema] | None = None
+    # detalhes de emocao (apenas quando a analise de emocao roda - EMOTION_BACKEND=local)
+    deteccoes_emocao: list[DeteccaoEmocaoSchema] | None = None
     # detalhes de laudo/documento (apenas quando ha PDF)
     texto_documento: str | None = Field(
         default=None, description="Texto extraido do PDF de laudo."
@@ -99,5 +118,7 @@ class AnaliseRiscoResponse(BaseModel):
     backend_transcricao: str | None = None
     backend_nlp: str | None = None
     backend_video: str | None = None
+    backend_pose: str | None = None
+    backend_emocao: str | None = None
     backend_ocr: str | None = None
     backend_summarizer: str | None = None

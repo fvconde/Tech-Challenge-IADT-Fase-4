@@ -85,8 +85,47 @@ Google**. Portanto:
 - **Custo zero / offline:** roda 100% local (`VIDEO_BACKEND=local`). Há `MockVideoAdapter`
   (`VIDEO_BACKEND=mock`) para testes/CI sem carregar o modelo. O import de `ultralytics`/`cv2`
   é lazy: o app sobe mesmo sem essas libs.
-- **Melhoria futura:** fine-tuning em objetos clínicos reais; adicionar pose (MediaPipe)
-  e emoção facial (DeepFace) como sinais visuais extras na mesma fusão.
+- **Melhoria futura:** fine-tuning em objetos clínicos reais.
+
+### 5b. Vídeo multimodal opt-in: pose (MediaPipe), emoção (DeepFace) e trilha (MoviePy)
+
+**Decisão:** ampliar o vídeo com três técnicas do material do curso, cada uma atrás de um
+Port (local + mock), **opt-in e desligadas por padrão**.
+
+- **Por que default `mock`/`off`:** MediaPipe e DeepFace são libs **pesadas** (DeepFace puxa
+  TensorFlow e baixa pesos na 1ª execução; no Windows+Python 3.12 pode haver atrito de
+  wheel). Mantendo o default desligado, o app **sobe e `/api/video` funciona igual** sem
+  exigir instalá-las — fiel à restrição de custo zero e à subida sem dependências rígidas.
+  Ativação consciente na demo: `POSE_BACKEND=local`, `EMOTION_BACKEND=local`,
+  `VIDEO_TRANSCREVER_AUDIO=true`.
+- **LGPD / dado biométrico:** rosto e pose são **dados sensíveis**. Ainda assim, MediaPipe e
+  DeepFace rodam **100% local** — **não enviam nada para fora** (melhor que o
+  `recognize_google` do áudio). Usar apenas material **sintético/de domínio público**, nunca
+  paciente real. A transcrição da **trilha de áudio** (`VIDEO_TRANSCREVER_AUDIO`) reusa o
+  `recognize_google`, então herda o mesmo ⚠️ da §4 (envio ao Google) — por isso fica atrás
+  de flag, desligada por padrão.
+- **Postura ética:** pose/emoção geram categorias de severidade **média** (`sinal_corporal_estresse`,
+  `sinal_emocional_negativo`), **nunca críticas** e **nunca diagnóstico** — apenas indícios
+  observáveis para a equipe. Emoção aparente ≠ estado clínico.
+- **`face_recognition` (dlib) foi deliberadamente deixado de fora:** o reconhecimento de
+  **identidade** exigiria `dlib` (compilação com CMake/VS Build Tools no Windows+Py3.12) e
+  não agrega ao caso de uso (queremos indícios, não identificar a pessoa). Fora do escopo.
+
+**Notas de instalação (validado em Python 3.12.10 / Windows):**
+- **MediaPipe usa a Tasks API.** A versão instalada (0.10.35) **não tem** a API legada
+  `mp.solutions.pose`; o `LocalPoseAdapter` usa `PoseLandmarker` (Tasks) e **baixa o modelo
+  `.task` uma vez** do repositório público do Google (como o YOLO baixa `yolov8n.pt`).
+  `POSE_MODEL` aponta para um arquivo local para rodar offline.
+- **DeepFace exige `tf-keras`** quando o TensorFlow é ≥ 2.16 (Keras 3): `pip install tf-keras`.
+  Sem isso, o `retinaface` (dep do DeepFace) falha no import.
+- **Conflitos de metadados cosméticos (sem quebra em runtime):** `mediapipe` puxa
+  `opencv-contrib-python` (convive com `opencv-python`; o `cv2` resolve para a build contrib)
+  e rebaixa `Pillow` (o `pdfplumber` pede ≥12.2 mas funciona com a versão menor). `torch` e
+  `tensorflow` **coexistem** no mesmo ambiente sem conflito.
+- **Smoke validado:** pose detecta sinais em imagem/vídeo reais; DeepFace classifica emoção
+  (rosto real → `neutral`); MoviePy extrai trilha (vídeo com áudio → WAV); e
+  `/api/video/analyze` com `POSE_BACKEND=local`/`EMOTION_BACKEND=local` devolve
+  `modalidades: ["video","pose","emocao"]` num único alerta.
 
 ### Falso positivo conhecido do léxico (limitação honesta)
 

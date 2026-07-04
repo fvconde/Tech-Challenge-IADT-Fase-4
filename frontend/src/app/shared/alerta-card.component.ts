@@ -34,10 +34,13 @@ import { NivelBadgeComponent } from './nivel-badge.component';
           <span class="tele corrob-label">Corroboração</span>
           <div class="canais">
             <span class="canal" [class.on]="resp.modalidades.includes('texto')">Texto</span>
+            <span class="canal" [class.on]="resp.modalidades.includes('audio')">Áudio</span>
             <span class="canal" [class.on]="resp.modalidades.includes('video')">Vídeo / imagem</span>
+            <span class="canal" [class.on]="resp.modalidades.includes('pose')">Pose</span>
+            <span class="canal" [class.on]="resp.modalidades.includes('emocao')">Emoção</span>
             <span class="canal" [class.on]="resp.modalidades.includes('laudo')">Laudo</span>
           </div>
-          <span class="tele corrob-count">{{ resp.modalidades.length }}/3 canais</span>
+          <span class="tele corrob-count">{{ resp.modalidades.length }} canais</span>
         </div>
       } @else if (resp.modalidades.length) {
         <div class="chips">

@@ -21,6 +21,8 @@ env/
 *.pth
 *.bin
 *.h5
+# modelo MediaPipe Pose (baixado sob demanda)
+*.task
 # Ancorado na raiz (/) para NAO ignorar backend/app/models/ (schemas Pydantic).
 /models/
 /weights/
@@ -40,6 +42,9 @@ data/samples/*.mp4
 data/samples/*.avi
 # PDFs de laudo gerados pelo scripts/gerar_laudo_exemplo.py (regenerados sob demanda)
 data/samples/*.pdf
+# audios de exemplo (TTS via edge-tts / mux; regenerados sob demanda)
+data/samples/*.mp3
+data/samples/*.wav
 *.wav.real
 *.mp4.real
 

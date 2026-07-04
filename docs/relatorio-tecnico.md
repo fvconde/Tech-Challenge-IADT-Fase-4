@@ -58,6 +58,9 @@ alerta único. Endpoints: `/api/text/analyze`, `/api/audio/analyze`, `/api/video
 | Texto      | Extração de entidades (regex)             | (próprio)             | ✅     |
 | Áudio      | Transcrição fala→texto                     | SpeechRecognition (recognize_google) | ⚠️ envia ao Google |
 | Vídeo      | Detecção de objetos                        | ultralytics (YOLOv8n) | ✅     |
+| Vídeo      | Pose / atividade corporal (opt-in)         | MediaPipe (Tasks API `PoseLandmarker`) | ✅ (baixa modelo `.task` 1×) |
+| Vídeo      | Emoção facial (opt-in)                      | DeepFace              | ✅ (baixa pesos 1×) |
+| Vídeo      | Trilha de áudio → transcrição (opt-in)     | MoviePy (+ SpeechRecognition) | ⚠️ trilha vai ao Google se ativa |
 | Laudo      | Extração de texto de PDF (OCR)             | pdfplumber / PyMuPDF / pytesseract | ✅ (sem Textract) |
 | Laudo      | Sumarização abstrativa                     | transformers (distilbart-cnn) | ✅ |
 | Nuvem      | Armazenamento (**usado**)                  | Amazon S3             | ☁️ ✅ funciona |
@@ -111,11 +114,34 @@ alerta único. Endpoints: `/api/text/analyze`, `/api/audio/analyze`, `/api/video
   > Nota: distilbart-cnn é treinado em **inglês** (CNN/DailyMail); em português o resumo é
   > aproximado e o ROUGE tende a ser modesto. O número serve de baseline reprodutível.
 
+## 4c. Vídeo multimodal: pose (MediaPipe), emoção (DeepFace) e trilha de áudio (MoviePy)
+
+O endpoint `/api/video/analyze` é um analisador **multimodal** do mesmo arquivo — YOLO
+(sempre) + três técnicas **opt-in**, cada uma atrás de um Port com adapter local + mock:
+
+- **Pose / atividade (MediaPipe → `PosePort` → `pose_rules.py`):** os 33 landmarks viram
+  **sinais corporais** por heurísticas conservadoras (`maos_proximas_ao_rosto`,
+  `maos_juntas_ao_corpo`) → categoria `sinal_corporal_estresse`.
+- **Emoção facial (DeepFace → `EmotionPort` → `emotion_rules.py`):** só emoções
+  **negativas** (`sad`/`fear`/`angry`/`disgust`) acima do limiar viram
+  `sinal_emocional_negativo`. Emoções positivas não geram risco.
+- **Trilha de áudio (MoviePy → `TranscriptionPort` → NLP):** extrai o áudio do vídeo,
+  transcreve e reusa **todo** o pipeline de texto, virando a modalidade `audio` na fusão.
+
+**Padrão de custo/segurança:** defaults `POSE_BACKEND=mock`, `EMOTION_BACKEND=mock`,
+`VIDEO_TRANSCREVER_AUDIO=false` → o app sobe e o endpoint se comporta como antes (só YOLO)
+**sem** exigir as libs pesadas. Ativação na demo: `POSE_BACKEND=local`,
+`EMOTION_BACKEND=local`, `VIDEO_TRANSCREVER_AUDIO=true`. Cada técnica é **isolada**: falha
+de uma (lib ausente, sem rosto, sem trilha) não derruba as demais. **Nenhum diagnóstico:**
+pose e emoção são categorias de severidade **média** (não críticas), só indícios para a equipe.
+
 ## 5. Categorias de risco e regra de fusão
 
 Categorias monitoradas: `depressao_pos_parto`, `ansiedade`, `violencia_domestica`,
-`fadiga_hormonal` (texto/áudio) e `objeto_suspeito_automutilacao` (vídeo). Cada alerta
-carrega as **evidências** que o motivaram.
+`fadiga_hormonal` (texto/áudio), `objeto_suspeito_automutilacao` (vídeo/YOLO) e — quando as
+técnicas opt-in estão ativas — `sinal_corporal_estresse` (vídeo/pose) e
+`sinal_emocional_negativo` (vídeo/emoção). Cada alerta carrega as **evidências** que o
+motivaram.
 
 **Regra de fusão multimodal** (`services/fusion/alerts.py` + `multimodal.py`):
 1. Cada modalidade produz uma lista de `DeteccaoCategoria` (mesmo tipo de dado).
@@ -147,6 +173,38 @@ carrega as **evidências** que o motivaram.
   `person` e mais 2 `scissors` → classe-foco → `objeto_suspeito_automutilacao`
   (**score 0,848**) → alerta **alto**, com **imagem anotada** (bounding boxes) no response.
   É o caso "alto" com modelo real usado na demo.
+
+**Vídeo multimodal — pose/emoção** (smoke real com `POSE_BACKEND=local` e
+`EMOTION_BACKEND=local` no clipe `paciente_demoV2.mp4` — **vídeo sintético gerado por IA**, ver §7):
+
+- **Emoção (DeepFace):** rosto detectado nos frames amostrados; emoções aparentes
+  `fear`/`sad`/`surprise`, com **pico de medo 0,999** → categoria `sinal_emocional_negativo`
+  (**score 0,999**).
+- **Pose (MediaPipe):** sinal `maos_juntas_ao_corpo` (**conf 0,98**) → categoria
+  `sinal_corporal_estresse` (**score 0,98**).
+- **YOLO:** `person` (conf 0,92) em todos os frames — nenhuma classe-foco.
+- **Alerta (só vídeo):** **médio**, `modalidades: ["video","pose","emocao"]` — as **três**
+  técnicas de visão convergindo no mesmo arquivo. Médio é o esperado: pose e emoção são
+  indícios de severidade média (não críticos); na fusão com texto/laudo o alerta sobe a **alto**.
+
+> Um clipe *close-up* anterior (`paciente_demo.mp4`) deu emoção 0,881 mas **0 sinais de
+> pose** — a sensibilidade ao enquadramento e a mitigação são discutidas no §7.
+
+**Vídeo com trilha de áudio — 4 modalidades num único arquivo** (smoke real; ao vídeo
+sintético foi acoplada uma **fala sintética** gerada por TTS — `edge-tts`, PT-BR —, também
+sem voz real, ver §7). Com `VIDEO_TRANSCREVER_AUDIO=true`, o `/api/video/analyze` extrai a
+trilha (MoviePy), transcreve (`recognize_google`) e roda o NLP:
+
+- **Transcrição (real):** *"tenho medo dele ele me empurrou e me ameaçou"*.
+- **Modalidade `audio`:** `violencia_domestica` (**crítica, score 1,0**) — evidências
+  `tenho medo dele`, `me empurrou`, `me ameacou`.
+- **Emoção:** `sinal_emocional_negativo` **0,999**; **Pose:** `sinal_corporal_estresse`
+  **0,977**; **YOLO:** `person`.
+- **Resultado:** `modalidades: ["audio","video","pose","emocao"]`, nível **ALTO** (a
+  categoria crítica de violência domina), com ação prioritária de protocolo de violência.
+
+É o exemplo multimodal mais completo: **um só arquivo** exercitando fala→NLP + emoção +
+pose + objeto, convergindo num alerta único, priorizado e rastreável.
 
 **Laudo** (smoke real do `LocalOcrAdapter` no PDF sintético `laudo_exemplo.pdf`):
 
@@ -187,6 +245,13 @@ testes automatizados.
 ## 7. Conformidade e limitações
 
 - Sem PHI; apenas dados sintéticos (LGPD). Ver [decisoes-arquiteturais.md](decisoes-arquiteturais.md).
+- **Vídeo de "paciente" gerado por IA:** o clipe usado para exercitar emoção/pose
+  (`paciente_demoV2.mp4`) é **sintético** (produzido por ferramenta de vídeo por IA), não é
+  pessoa real — reforço direto de LGPD (sem rosto nem PHI de paciente).
+- **Fala de "paciente" gerada por TTS:** o áudio acoplado ao vídeo (`fala.mp3`, via
+  `edge-tts`) é **voz sintética**, não é gravação real — mesmo racional de LGPD do vídeo
+  sintético. A transcrição ainda envia o áudio ao Google (`recognize_google`), por isso só
+  material sintético.
 - `recognize_google` envia áudio a terceiros — usar só material sintético; backend
   offline previsto como melhoria.
 - **Amazon Comprehend** ficou **indisponível na conta** (`SubscriptionRequiredException`,
@@ -205,6 +270,11 @@ testes automatizados.
   **apoio à decisão, não diagnóstico**. Detalhe e mitigações em
   [decisoes-arquiteturais.md](decisoes-arquiteturais.md) §5.
 - Vídeo usa modelo pré-treinado em classes COCO (proxy). Fine-tuning é melhoria futura.
+- **Pose (MediaPipe) é sensível ao enquadramento:** as heurísticas exigem punhos e nariz
+  visíveis (pulso próximo ao nariz / pulsos juntos). Num vídeo *close-up* (`paciente_demo.mp4`)
+  punhos e tórax saem do quadro e **nenhum** sinal corporal é gerado; num enquadramento aberto
+  (cintura para cima, `paciente_demoV2.mp4`) o sinal `maos_juntas_ao_corpo` foi detectado a
+  **0,98** — **mitigação confirmada** (§6).
 
 ## 8. Como reproduzir
 

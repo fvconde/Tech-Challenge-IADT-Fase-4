@@ -35,6 +35,22 @@ BOOST_CORROBORACAO = 0.15
 # Categorias que, com qualquer indicio, ja exigem alerta ALTO.
 CATEGORIAS_CRITICAS = {"violencia_domestica", "objeto_suspeito_automutilacao"}
 
+# Marcador (texto) que combinar_categorias escreve nas evidencias quando uma categoria
+# e vista em 2+ modalidades. Fonte UNICA: usado tanto para MARCAR quanto para DETECTAR
+# corroboracao (ver _corroborada), sem precisar de um novo campo no modelo.
+MARCA_CORROBORACAO = "corroboração multimodal"
+
+# Margem de score ponderado para uma categoria NAO-CRITICA "dominar" a acao sobre uma
+# critica fraca. 0.30 preserva a demo (objeto real 0.848 vs pos-parto 0.9: diff 0.05),
+# so rebaixa criticos genuinamente fracos (ex.: 0.33) a "requer verificacao".
+MARGEM_DOMINANCIA = 0.30
+
+# Rotulos legiveis das categorias criticas (para compor o aviso de "requer verificacao").
+ROTULO_CATEGORIA: dict[str, str] = {
+    "violencia_domestica": "violência doméstica",
+    "objeto_suspeito_automutilacao": "objeto suspeito (risco de automutilação)",
+}
+
 # Acao recomendada por categoria (texto para a equipe especializada).
 ACAO_POR_CATEGORIA: dict[str, str] = {
     "violencia_domestica": (
@@ -57,6 +73,16 @@ ACAO_POR_CATEGORIA: dict[str, str] = {
     ),
     "fadiga_hormonal": (
         "Sugerir avaliação clínica/hormonal pela equipe (investigar causas de fadiga)."
+    ),
+    "sinal_emocional_negativo": (
+        "Vídeo indica emoção facial negativa aparente (tristeza/medo/raiva). "
+        "Sinalizar à equipe para acolhimento e escuta ativa; NÃO é diagnóstico, "
+        "apenas um indício a ser observado no contexto da consulta."
+    ),
+    "sinal_corporal_estresse": (
+        "Vídeo indica sinais corporais de tensão/proteção (postura/gestos). "
+        "Sinalizar à equipe para observação e escuta acolhedora; NÃO é diagnóstico, "
+        "apenas um indício comportamental a ser considerado com cautela."
     ),
 }
 
@@ -105,11 +131,16 @@ def combinar_categorias(
         if n >= 2:
             d = combinadas[cat]
             d.score = round(min(1.0, d.score + BOOST_CORROBORACAO), 3)
-            d.evidencias.append(f"corroboração multimodal ({n} modalidades)")
+            d.evidencias.append(f"{MARCA_CORROBORACAO} ({n} modalidades)")
 
     resultado = list(combinadas.values())
     resultado.sort(key=lambda d: d.score, reverse=True)
     return resultado
+
+
+def _corroborada(categoria: DeteccaoCategoria) -> bool:
+    """True se a categoria foi corroborada por 2+ modalidades (marca de combinar_categorias)."""
+    return any(MARCA_CORROBORACAO in e for e in categoria.evidencias)
 
 
 def avaliar_alerta(
@@ -140,10 +171,33 @@ def avaliar_alerta(
     top = max(categorias, key=ponderado)
     acao = ACAO_POR_CATEGORIA.get(top.categoria, ACAO_SEM_RISCO)
 
-    # categorias criticas: qualquer indicio -> ALTO (a acao segue a critica de maior peso)
+    # Categorias criticas: qualquer indicio -> nivel ALTO (regra de seguranca; NAO muda).
+    # A ACAO, porem, considera score E corroboracao: uma critica FRACA (baixo score, sem
+    # corroboracao) nao deve dominar o texto quando ha nao-critica MUITO mais forte.
     criticas = [c for c in categorias if c.categoria in CATEGORIAS_CRITICAS]
     if criticas:
         critica_top = max(criticas, key=ponderado)
+        nao_criticas = [c for c in categorias if c.categoria not in CATEGORIAS_CRITICAS]
+        top_nc = max(nao_criticas, key=ponderado) if nao_criticas else None
+
+        # Uma nao-critica "domina" a acao quando e significativamente mais forte
+        # (score ponderado) E corroborada, enquanto a critica NAO tem corroboracao.
+        domina = (
+            top_nc is not None
+            and ponderado(top_nc) >= ponderado(critica_top) + MARGEM_DOMINANCIA
+            and _corroborada(top_nc)
+            and not _corroborada(critica_top)
+        )
+        if domina:
+            rotulo = ROTULO_CATEGORIA.get(critica_top.categoria, critica_top.categoria)
+            acao_composta = (
+                f"{ACAO_POR_CATEGORIA.get(top_nc.categoria, ACAO_SEM_RISCO)} "
+                f"Observação: há também indício de {rotulo} de baixa confiança "
+                f"(score {critica_top.score:.2f}, sem corroboração) — requer verificação "
+                f"pela equipe, não confirma risco isoladamente."
+            )
+            return NivelAlerta.alto, acao_composta
+        # Caso geral: a critica domina a acao prioritaria (comportamento anterior).
         return NivelAlerta.alto, ACAO_POR_CATEGORIA[critica_top.categoria]
 
     risco = ponderado(top)

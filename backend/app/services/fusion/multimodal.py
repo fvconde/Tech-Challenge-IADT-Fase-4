@@ -18,14 +18,18 @@ from __future__ import annotations
 from backend.app.models.schemas import (
     AnaliseRiscoResponse,
     CategoriaRiscoSchema,
+    DeteccaoEmocaoSchema,
+    DeteccaoPoseSchema,
     DeteccaoVisualSchema,
     EntidadeSchema,
     SentimentoSchema,
 )
 from backend.app.ports.base import (
     DeteccaoCategoria,
+    EmotionAnalysisResult,
     Entidade,
     NlpResult,
+    PoseAnalysisResult,
     SentimentResult,
     VideoAnalysisResult,
 )
@@ -60,8 +64,13 @@ def fundir(
     *,
     categorias_texto: list[DeteccaoCategoria] | None = None,
     nlp_result: NlpResult | None = None,
+    categorias_audio: list[DeteccaoCategoria] | None = None,
     categorias_video: list[DeteccaoCategoria] | None = None,
     video_result: VideoAnalysisResult | None = None,
+    categorias_pose: list[DeteccaoCategoria] | None = None,
+    pose_result: PoseAnalysisResult | None = None,
+    categorias_emocao: list[DeteccaoCategoria] | None = None,
+    emotion_result: EmotionAnalysisResult | None = None,
     categorias_laudo: list[DeteccaoCategoria] | None = None,
     nlp_laudo: NlpResult | None = None,
     transcricao: str | None = None,
@@ -71,7 +80,12 @@ def fundir(
     backend_ocr: str | None = None,
     backend_summarizer: str | None = None,
 ) -> AnaliseRiscoResponse:
-    """Combina as modalidades fornecidas em um unico AnaliseRiscoResponse."""
+    """Combina as modalidades fornecidas em um unico AnaliseRiscoResponse.
+
+    'categorias_audio' rotula a fala transcrita de uma TRILHA de video como
+    modalidade 'audio' (seu sentimento/entidades vem de 'nlp_result', igual ao
+    texto). 'categorias_pose'/'categorias_emocao' sao as tecnicas de video.
+    """
     modalidades: list[str] = []
     listas: list[list[DeteccaoCategoria]] = []
 
@@ -79,9 +93,18 @@ def fundir(
     if categorias_texto is not None:
         modalidades.append("texto")
         listas.append(categorias_texto)
+    if categorias_audio is not None:
+        modalidades.append("audio")
+        listas.append(categorias_audio)
     if categorias_video is not None:
         modalidades.append("video")
         listas.append(categorias_video)
+    if categorias_pose is not None:
+        modalidades.append("pose")
+        listas.append(categorias_pose)
+    if categorias_emocao is not None:
+        modalidades.append("emocao")
+        listas.append(categorias_emocao)
     if categorias_laudo is not None:
         modalidades.append("laudo")
         listas.append(categorias_laudo)
@@ -134,5 +157,21 @@ def fundir(
         resposta.frames_analisados = video_result.frames_analisados
         resposta.backend_video = video_result.backend
         resposta.imagem_anotada_b64 = video_result.imagem_anotada_b64
+
+    # anexa detalhes de pose (MediaPipe), se houver
+    if pose_result is not None:
+        resposta.deteccoes_pose = [
+            DeteccaoPoseSchema(sinal=s.sinal, confianca=s.confianca, frame=s.frame)
+            for s in pose_result.sinais
+        ]
+        resposta.backend_pose = pose_result.backend
+
+    # anexa detalhes de emocao (DeepFace), se houver
+    if emotion_result is not None:
+        resposta.deteccoes_emocao = [
+            DeteccaoEmocaoSchema(emocao=e.emocao, score=e.score, frame=e.frame)
+            for e in emotion_result.emocoes
+        ]
+        resposta.backend_emocao = emotion_result.backend
 
     return resposta

@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     nlp_backend: str = "local"                      # local | comprehend
     transcription_backend: str = "recognize_google" # recognize_google | mock
     video_backend: str = "local"                    # local | mock
+    # Pose (MediaPipe) e emocao (DeepFace) sao ADITIVAS e puxam libs pesadas, entao
+    # o default e 'mock' (retorna vazio): o app sobe e /api/video funciona igual sem
+    # elas instaladas. Ative na demo com POSE_BACKEND=local / EMOTION_BACKEND=local.
+    pose_backend: str = "mock"                      # local | mock
+    emotion_backend: str = "mock"                   # local | mock
     ocr_backend: str = "local"                      # local | mock (sem Textract!)
     summarizer_backend: str = "distilbart"          # distilbart | extractive
 
@@ -42,11 +47,20 @@ class Settings(BaseSettings):
     video_focus_classes: str = "knife,scissors"
     video_frame_sample: int = 15                    # analisa 1 frame a cada N
     video_conf_threshold: float = 0.25              # confianca minima da deteccao
+    # Transcrever a TRILHA DE AUDIO do video (moviepy -> TranscriptionPort -> NLP).
+    # Default False: com transcription_backend=recognize_google isso ENVIA o audio
+    # ao Google (LGPD). Ative conscientemente na demo com VIDEO_TRANSCREVER_AUDIO=true.
+    video_transcrever_audio: bool = False
 
     @property
     def video_focus_classes_list(self) -> list[str]:
         """Converte a string 'knife,scissors' em ['knife', 'scissors']."""
         return [c.strip() for c in self.video_focus_classes.split(",") if c.strip()]
+
+    # ----- Pose (MediaPipe Tasks) -----
+    # Modelo .task do PoseLandmarker; baixado 1x do Google se ausente (como o YOLO).
+    # Aponte para um arquivo local para rodar offline.
+    pose_model: str = "pose_landmarker_lite.task"
 
     # ----- Sumarizacao -----
     # Modelo HF para o backend distilbart (treinado em ingles; ver relatorio).

@@ -20,19 +20,20 @@ ambiente. Inspirado em injeção de dependência: **uma interface (port), duas
 implementações (local default | cloud opcional)**.
 
 ```
-                +------------------- FastAPI (REST) -------------------+
-   upload --->  | /api/text   /api/audio   /api/video   /api/fusion    |
-                +------------------------------------------------------+
-                                |            |             |
-                          services/text  services/audio  services/video
-                                |            |             |
-                +---------------v------------v-------------v-----------+
-                |                   PORTS (interfaces)                  |
-                |  StoragePort   NlpPort   TranscriptionPort  ...       |
-                +------+----------------+-----------------+------------+
-                       |                |                 |
-                  LocalStorage     LocalNlp          RecognizeGoogle   <- default (local)
-                  S3Storage        Comprehend        (mock)            <- opcional/cloud
+                +------------------------- FastAPI (REST) -------------------------+
+   upload --->  | /api/text  /api/audio  /api/video  /api/laudo  /api/fusion       |
+                +------------------------------------------------------------------+
+                              |         |         |         |
+                        services/text  audio    video    text/document
+                                         \        |        /
+                                          \       |       /   services/fusion -> 1 alerta
+                +--------------------------v------v------v-------------------------+
+                |                       PORTS (interfaces)                          |
+                | Storage  Nlp  Transcription  Video  Pose  Emotion  Ocr  Summarizer|
+                +---------------------------+------------------+--------------------+
+                       |                    |                  |
+                  Local* (default)   recognize_google /   S3 / Comprehend   <- cloud
+                  yolov8n, distilbart, local            (opcional, opt-in)      opcional
 ```
 
 Detalhes e justificativas em [docs/decisoes-arquiteturais.md](docs/decisoes-arquiteturais.md).
@@ -78,7 +79,7 @@ A API sobe em `http://127.0.0.1:8000`. Documentação interativa em
 
 ---
 
-## Fatia vertical entregue (Sessão 1): análise de áudio/texto
+## Análise de áudio/texto
 
 Pipeline ponta-a-ponta **sem nuvem**:
 
@@ -108,10 +109,21 @@ Resposta (resumida):
 
 ---
 
-## Vídeo (YOLOv8) e fusão multimodal
+## Vídeo (multimodal) e fusão
 
-O vídeo agora está **integrado ao backend** (não só no notebook). YOLOv8n pré-treinado,
-local, com a "customização" nas **regras de risco** (classes-foco configuráveis).
+O vídeo está **integrado ao backend** (não só no notebook) e é analisado por várias
+técnicas isoladas — a falha de uma não derruba as outras:
+
+- **YOLOv8n** (objetos) → risco visual. Sempre ativo. A "customização" está nas
+  **regras de risco** (classes-foco configuráveis), não no fine-tuning do modelo.
+- **MediaPipe** (pose/gestos) → risco corporal. Opt-in via `POSE_BACKEND=local`.
+- **DeepFace** (emoção facial) → risco emocional. Opt-in via `EMOTION_BACKEND=local`.
+- **Trilha de áudio** (moviepy → transcrição → NLP) no `/api/video/analyze`.
+  Opt-in via `VIDEO_TRANSCREVER_AUDIO=true` (envia o áudio ao Google — ver LGPD).
+
+Pose e emoção puxam libs pesadas, então o **default é `mock` (retornam vazio)**: o app
+sobe e `/api/video` funciona só com YOLO, sem elas instaladas. Todas convergem em **um
+único alerta** pela camada de fusão.
 
 ```powershell
 pip install ultralytics opencv-python    # já no requirements (puxa torch ~ centenas de MB)
@@ -126,7 +138,7 @@ curl.exe -F "arquivo=@data/samples/video_exemplo.mp4" http://127.0.0.1:8000/api/
 curl.exe -F "texto=tenho medo dele, ele me empurrou" -F "video_arquivo=@data/samples/video_exemplo.mp4" http://127.0.0.1:8000/api/fusion/analyze
 ```
 
-A detecção usa classes COCO genéricas; as **regras de risco** (`VIDEO_FOCUS_CLASSES`,
+A detecção YOLO usa classes COCO genéricas; as **regras de risco** (`VIDEO_FOCUS_CLASSES`,
 default `knife,scissors`) decidem o que vira `objeto_suspeito_automutilacao`. Para um
 demo de alerta **alto** com modelo real, use um clipe/imagem contendo faca ou tesoura.
 O notebook [notebooks/01_yolov8_demo.ipynb](notebooks/01_yolov8_demo.ipynb) segue
@@ -211,28 +223,16 @@ pytest backend/tests -q
 
 ## Estrutura
 
-Ver seção 7 do [CLAUDE.md](CLAUDE.md). Resumo:
-
-- `backend/app/ports/` — interfaces + adapters local/cloud (storage, nlp, transcription,
-  video, ocr, summarizer)
-- `backend/app/services/` — lógica por modalidade (audio, text/document, video, fusion)
-- `backend/app/api/routers/` — endpoints REST (text, audio, video, laudo, fusion)
-- `scripts/` — geradores de exemplo (vídeo, laudo), ROUGE e smoke AWS
+- `backend/app/ports/` — interfaces (ports) + adapters local/cloud: storage, nlp,
+  transcription, video, pose, emotion, ocr, summarizer
+- `backend/app/services/` — lógica por modalidade: audio, text/document, video
+  (yolo + regras de pose/emoção), fusion
+- `backend/app/api/routers/` — endpoints REST: text, audio, video, laudo, fusion
+- `scripts/` — geradores de exemplo (vídeo, laudo), avaliação ROUGE e smoke AWS
 - `frontend/` — app Angular 19 (interface web da demo)
-- `notebooks/` — demos (YOLOv8, NLP)
+- `notebooks/` — demos (`01_yolov8_demo`, `03_nlp_classifier`)
 - `data/samples/` — dados sintéticos (sem PHI)
-- `docs/` — relatório técnico e decisões arquiteturais
+- `docs/` — relatório técnico, decisões arquiteturais e apoio à gravação da demo
 
----
-
-## Roadmap (próximas sessões)
-
-- [x] Vídeo: YOLOv8 integrado ao backend (`/api/video/analyze`) via `VideoPort`
-- [x] Fusão multimodal (texto + vídeo + laudo → alerta único) em `/api/fusion/analyze`
-- [x] OCR local de laudos (pdfplumber/PyMuPDF/pytesseract) — substituto do Textract
-- [x] Sumarização local (transformers `distilbart`) + avaliação ROUGE
-- [x] Adapters de nuvem (S3 + Comprehend) com smoke opt-in (`scripts/smoke_aws.py`)
-- [x] Frontend Angular 19 (interface multimodal + alerta à equipe)
-- [ ] Vídeo: somar DeepFace (emoção) + MediaPipe (pose) na mesma fusão
-- [ ] Bedrock (sumarização/agente) na demo final, se sobrar crédito
-- [ ] Gravar o vídeo de demonstração (até 15 min)
+O contexto de projeto, escopo e decisões de custo/LGPD que guiaram estas escolhas está
+em [docs/decisoes-arquiteturais.md](docs/decisoes-arquiteturais.md).

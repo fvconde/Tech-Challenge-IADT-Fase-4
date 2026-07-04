@@ -66,6 +66,8 @@ PESO_SEVERIDADE: dict[str, float] = {
     "objeto_suspeito_automutilacao": 1.0,  # categoria de VIDEO (proxy automutilacao)
     "depressao_pos_parto": 0.9,
     "ansiedade": 0.6,
+    "sinal_emocional_negativo": 0.6,  # VIDEO/emocao (DeepFace) - proxy, nao critica
+    "sinal_corporal_estresse": 0.5,   # VIDEO/pose (MediaPipe) - proxy, nao critica
     "fadiga_hormonal": 0.5,
 }
 

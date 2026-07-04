@@ -52,6 +52,15 @@ rouge-score>=0.1.2           # avaliacao ROUGE da sumarizacao (script)
 # ============================================================================
 # GRUPOS PESADOS - instalar sob demanda (descomente quando precisar):
 # ============================================================================
-# ----- Visao adicional (proximas sessoes) -----
-# mediapipe>=0.10            # pose
-# deepface>=0.0.90           # emocao facial
+# ----- Video multimodal adicional (pose / emocao / trilha de audio) -----
+# Todas OPCIONAIS: o app sobe e /api/video funciona sem elas (defaults mock/off).
+# Ative na demo com POSE_BACKEND=local, EMOTION_BACKEND=local, VIDEO_TRANSCREVER_AUDIO=true.
+# Validado com Python 3.12.10 no Windows. Notas de instalacao em
+# docs/decisoes-arquiteturais.md (conflitos de metadados conhecidos, sem quebra em runtime).
+# mediapipe>=0.10            # POSE_BACKEND=local (Tasks API PoseLandmarker; baixa modelo .task 1x).
+#                            # ATENCAO: puxa opencv-contrib-python (coexiste com opencv-python;
+#                            # o cv2 resulta na versao contrib) e rebaixa Pillow (pdfplumber
+#                            # avisa >=12.2, mas funciona em runtime).
+# deepface>=0.0.90           # EMOTION_BACKEND=local (puxa tensorflow - PESADO ~350MB; baixa pesos 1x).
+# tf-keras                   # OBRIGATORIO com deepface em tensorflow>=2.16 (Keras 3 -> compat Keras 2).
+# moviepy>=1.0               # VIDEO_TRANSCREVER_AUDIO=true (extrai trilha; ffmpeg via imageio-ffmpeg).
