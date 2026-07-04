@@ -7,7 +7,9 @@ import { AnaliseRiscoResponse, VideoStatus } from './models';
 // Entrada da fusao multimodal: qualquer combinacao das modalidades.
 export interface FusaoInput {
   texto?: string;
-  video?: File | null; // video OU imagem (o backend aceita ambos no mesmo campo)
+  audio?: File | null; // WAV/FLAC (transcrito -> NLP)
+  video?: File | null; // video OU imagem
+  imagem?: File | null; // imagem adicional (combinada com o video, nao descartada)
   laudo?: File | null; // PDF
 }
 
@@ -49,11 +51,13 @@ export class ApiService {
     );
   }
 
-  // POST /api/fusion/analyze  (multipart: texto + video_arquivo + laudo_arquivo)
+  // POST /api/fusion/analyze  (multipart: texto + audio + video + imagem + laudo)
   analisarFusao(input: FusaoInput): Observable<AnaliseRiscoResponse> {
     const fd = new FormData();
     if (input.texto && input.texto.trim()) fd.append('texto', input.texto);
+    if (input.audio) fd.append('audio_arquivo', input.audio);
     if (input.video) fd.append('video_arquivo', input.video);
+    if (input.imagem) fd.append('imagem_arquivo', input.imagem);
     if (input.laudo) fd.append('laudo_arquivo', input.laudo);
     return this.http.post<AnaliseRiscoResponse>(`${this.base}/api/fusion/analyze`, fd);
   }

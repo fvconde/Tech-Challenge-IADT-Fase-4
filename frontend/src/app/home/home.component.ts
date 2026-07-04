@@ -109,12 +109,13 @@ export class HomeComponent {
 
   // ---- fusao multimodal (tela principal da demo) ----
   fundir(): void {
-    const video = this.arquivos.video ?? this.arquivos.imagem; // video tem prioridade
-    const laudo = this.arquivos.laudo;
-    if (!this.texto.trim() && !video && !laudo) {
+    // combina TODAS as modalidades enviadas (video E imagem juntos; a imagem nao
+    // e mais descartada, e o audio agora entra na fusao).
+    const { audio, video, imagem, laudo } = this.arquivos;
+    if (!this.texto.trim() && !audio && !video && !imagem && !laudo) {
       this.adicionarErro(
         '🚨 Alerta multimodal (fusão)',
-        'Forneça ao menos uma modalidade: texto, vídeo/imagem e/ou laudo.',
+        'Forneça ao menos uma modalidade: texto, áudio, vídeo, imagem e/ou laudo.',
       );
       return;
     }
@@ -122,7 +123,7 @@ export class HomeComponent {
       'fusao',
       '🚨 Alerta multimodal (fusão)',
       true,
-      this.api.analisarFusao({ texto: this.texto, video, laudo }),
+      this.api.analisarFusao({ texto: this.texto, audio, video, imagem, laudo }),
     );
   }
 
