@@ -59,6 +59,19 @@ class CategoriaRiscoSchema(BaseModel):
     )
 
 
+class AchadoSchema(BaseModel):
+    """Um indicio de risco localizado num trecho especifico de uma fonte."""
+
+    fonte: str = Field(description="texto | audio | laudo | video | pose | emocao")
+    trecho: str = Field(description="Conteudo (frase) que motivou o indicio.")
+    categoria: str = Field(description="Categoria de risco detectada nesse trecho.")
+    score: float = Field(description="0.0 a 1.0 - intensidade dos indicios no trecho.")
+    metadados: dict = Field(
+        default_factory=dict,
+        description="Posicao/contexto do trecho (ex.: indice_trecho, frame).",
+    )
+
+
 class DeteccaoVisualSchema(BaseModel):
     classe: str = Field(description="Classe COCO detectada (ex.: knife, scissors, person)")
     confianca: float = Field(description="0.0 a 1.0")
@@ -129,6 +142,10 @@ class AnaliseRiscoResponse(BaseModel):
         description="Texto transcrito (apenas quando ha audio).",
     )
     categorias_risco: list[CategoriaRiscoSchema] = Field(default_factory=list)
+    achados: list[AchadoSchema] = Field(
+        default_factory=list,
+        description="Categorização por trecho (chunk), com rastreabilidade de fonte e posição.",
+    )
     sentimento: SentimentoSchema
     entidades: list[EntidadeSchema] = Field(default_factory=list)
     nivel_alerta: NivelAlerta

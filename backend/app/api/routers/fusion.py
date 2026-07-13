@@ -52,6 +52,7 @@ from backend.app.ports.factory import (
     get_video,
 )
 from backend.app.services.fusion.multimodal import fundir
+from backend.app.services.text.achados import detectar_achados
 from backend.app.services.text.document import analisar_laudo
 from backend.app.services.text.nlp import extrair_categorias_e_nlp
 from backend.app.services.video.pipeline import analisar_video
@@ -231,8 +232,10 @@ async def analisar(
 
     # ----- modalidade texto -----
     categorias_texto = nlp_texto = None
+    achados: list = []
     if tem_texto:
         categorias_texto, nlp_texto = extrair_categorias_e_nlp(texto, nlp)
+        achados += detectar_achados(texto, "texto")
 
     # ----- modalidade audio (transcricao -> NLP) -----
     categorias_audio = nlp_audio = None
@@ -252,6 +255,8 @@ async def analisar(
                 nome, conteudo, transcription, nlp, storage, s.transcription_language
             )
         )
+        if transcricao:
+            achados += detectar_achados(transcricao, "audio")
 
     # ----- modalidade visual (video E/OU imagem, combinados) -----
     bundles = []
@@ -329,6 +334,7 @@ async def analisar(
         resumo = resultado.resumo
         backend_ocr = resultado.ocr.backend
         backend_sum = getattr(summarizer, "nome_backend", None) if resultado.resumo else None
+        achados += resultado.achados
 
     return fundir(
         categorias_texto=categorias_texto,
@@ -343,6 +349,7 @@ async def analisar(
         emocao_panel=emocao_panel,
         categorias_laudo=categorias_laudo,
         nlp_laudo=nlp_laudo,
+        achados=achados,
         transcricao=transcricao,
         backend_transcricao=backend_transcricao,
         texto_documento=texto_documento,

@@ -20,6 +20,16 @@ export interface CategoriaRisco {
   evidencias: string[]; // trechos/termos/deteccoes que motivaram o indicio
 }
 
+// Categorizacao por TRECHO (chunk): qual frase motivou o indicio, de qual fonte.
+// Complementa CategoriaRisco (agregado) com rastreabilidade fina.
+export interface Achado {
+  fonte: string; // texto | audio | laudo | video | pose | emocao
+  trecho: string; // frase que motivou o indicio
+  categoria: string; // categoria de risco detectada nesse trecho
+  score: number; // 0.0 a 1.0
+  metadados: Record<string, unknown>; // ex.: { indice_trecho: 2 }
+}
+
 export interface DeteccaoVisual {
   classe: string; // classe COCO (knife, scissors, person, ...)
   confianca: number; // 0.0 a 1.0
@@ -30,6 +40,7 @@ export interface DeteccaoVisual {
 export interface AnaliseRiscoResponse {
   transcricao: string | null;
   categorias_risco: CategoriaRisco[];
+  achados: Achado[]; // categorizacao por trecho (rastreabilidade fina)
   sentimento: Sentimento;
   entidades: Entidade[];
   nivel_alerta: NivelAlerta;

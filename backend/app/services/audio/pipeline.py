@@ -61,9 +61,9 @@ def analisar_audio(
     # 3) analisar o texto transcrito (reusa todo o pipeline de texto)
     if not transcricao.texto.strip():
         # audio vazio / nao compreendido: devolve resposta neutra explicita
-        resposta = analisar_texto("", nlp)
+        resposta = analisar_texto("", nlp, fonte="audio")
     else:
-        resposta = analisar_texto(transcricao.texto, nlp)
+        resposta = analisar_texto(transcricao.texto, nlp, fonte="audio")
 
     # 4) anexar metadados de transcricao
     resposta.transcricao = transcricao.texto

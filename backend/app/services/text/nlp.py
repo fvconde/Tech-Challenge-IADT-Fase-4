@@ -14,6 +14,7 @@ este mesmo servico, apenas preenchendo o campo 'transcricao' antes.
 from __future__ import annotations
 
 from backend.app.models.schemas import (
+    AchadoSchema,
     AnaliseRiscoResponse,
     CategoriaRiscoSchema,
     EntidadeSchema,
@@ -21,6 +22,7 @@ from backend.app.models.schemas import (
 )
 from backend.app.ports.base import NlpPort, NlpResult
 from backend.app.services.fusion.alerts import avaliar_alerta
+from backend.app.services.text.achados import detectar_achados
 from backend.app.services.text.classifier import prever_categoria
 from backend.app.services.text.risk_lexicon import (
     DeteccaoCategoria,
@@ -56,12 +58,21 @@ def extrair_categorias_e_nlp(
     return categorias, nlp_result
 
 
-def analisar_texto(texto: str, nlp: NlpPort) -> AnaliseRiscoResponse:
-    """Executa a analise completa de risco sobre um texto."""
+def analisar_texto(
+    texto: str, nlp: NlpPort, fonte: str = "texto"
+) -> AnaliseRiscoResponse:
+    """Executa a analise completa de risco sobre um texto.
+
+    'fonte' rotula a origem dos achados por trecho (ex.: "audio" quando este
+    servico e reusado pelo pipeline de audio sobre a transcricao).
+    """
     categorias, nlp_result = extrair_categorias_e_nlp(texto, nlp)
 
     # fusao -> nivel de alerta + acao
     nivel, acao = avaliar_alerta(categorias, nlp_result.sentimento)
+
+    # categorizacao por trecho (chunk), complementar ao agregado acima
+    achados = detectar_achados(texto, fonte)
 
     return AnaliseRiscoResponse(
         categorias_risco=[
@@ -81,6 +92,16 @@ def analisar_texto(texto: str, nlp: NlpPort) -> AnaliseRiscoResponse:
         nivel_alerta=nivel,
         acao_recomendada=acao,
         backend_nlp=nlp_result.sentimento.backend,
+        achados=[
+            AchadoSchema(
+                fonte=a.fonte,
+                trecho=a.trecho,
+                categoria=a.categoria,
+                score=a.score,
+                metadados=a.metadados,
+            )
+            for a in achados
+        ],
     )
 
 

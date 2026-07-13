@@ -175,6 +175,15 @@ motivaram.
 4. Caso geral: nível pelo maior score **ponderado pela severidade** da categoria
    (`alto ≥ 0,6`, `medio ≥ 0,3`, senão `baixo`).
 
+**Categorização por trecho (achados).** Além do agregado acima (que decide o alerta),
+`services/text/achados.py` quebra texto/transcrição/laudo em frases e classifica **cada
+frase** contra o léxico, gerando `achados: list[AchadoTrecho]` — um registro por
+(trecho × categoria) com `fonte`, `trecho`, `categoria`, `score` e `metadados`
+(ex.: `indice_trecho`). É aditivo (não muda o alerta) e existe para rastreabilidade fina:
+qual frase exata motivou cada indício, de qual modalidade. Detalhe da decisão (e por que
+não adotamos RAG/embeddings/LLM para isso) em
+[decisoes-arquiteturais.md](decisoes-arquiteturais.md) §5d.
+
 ## 6. Resultados obtidos e exemplos (saídas reais)
 
 **Texto** (amostras sintéticas em `data/samples/`):
@@ -272,7 +281,7 @@ testes automatizados.
   cobrança**) → o `NlpPort` cai no `LocalNlpAdapter` sem perda de função. **Prova de
   degradação graciosa** do padrão ports/adapters, validada contra a AWS real.
 
-**Testes:** 46 casos automatizados passando (`pytest backend/tests`).
+**Testes:** 54 casos automatizados passando (`pytest backend/tests`).
 
 ## 7. Conformidade e limitações
 

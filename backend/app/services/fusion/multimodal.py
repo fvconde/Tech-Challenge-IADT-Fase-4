@@ -16,6 +16,7 @@ Aceita 1 ou mais modalidades:
 from __future__ import annotations
 
 from backend.app.models.schemas import (
+    AchadoSchema,
     AnaliseRiscoResponse,
     CategoriaRiscoSchema,
     DeteccaoEmocaoSchema,
@@ -28,6 +29,7 @@ from backend.app.models.schemas import (
     SentimentoSchema,
 )
 from backend.app.ports.base import (
+    AchadoTrecho,
     DeteccaoCategoria,
     EmotionAnalysisResult,
     Entidade,
@@ -78,6 +80,7 @@ def fundir(
     emocao_panel: PainelEmocaoVideo | None = None,
     categorias_laudo: list[DeteccaoCategoria] | None = None,
     nlp_laudo: NlpResult | None = None,
+    achados: list[AchadoTrecho] | None = None,
     transcricao: str | None = None,
     backend_transcricao: str | None = None,
     texto_documento: str | None = None,
@@ -136,6 +139,16 @@ def fundir(
                 categoria=c.categoria, score=c.score, evidencias=c.evidencias
             )
             for c in combinadas
+        ],
+        achados=[
+            AchadoSchema(
+                fonte=a.fonte,
+                trecho=a.trecho,
+                categoria=a.categoria,
+                score=a.score,
+                metadados=a.metadados,
+            )
+            for a in (achados or [])
         ],
         sentimento=SentimentoSchema(
             rotulo=sentimento.rotulo, score=sentimento.score, backend=sentimento.backend

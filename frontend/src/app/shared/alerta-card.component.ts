@@ -99,6 +99,31 @@ import { NivelBadgeComponent } from './nivel-badge.component';
         </div>
       }
 
+      <!-- Evidências por trecho (chunk): a frase exata que motivou cada indício,
+           com a fonte de origem. Rastreabilidade fina, complementar às categorias. -->
+      @if (resp.achados.length) {
+        <div class="bloco">
+          <span class="tele rotulo">Evidências por trecho</span>
+          <ul class="achados">
+            @for (a of resp.achados; track $index) {
+              <li>
+                <div class="ach-head">
+                  <span class="ach-fonte">{{ a.fonte }}</span>
+                  <span class="ach-cat">{{ a.categoria }}</span>
+                  <span
+                    class="ach-score val"
+                    [class.cs-baixo]="a.score < 0.3"
+                    [class.cs-medio]="a.score >= 0.3 && a.score < 0.6"
+                    [class.cs-alto]="a.score >= 0.6"
+                    >{{ pct(a.score) }}</span>
+                </div>
+                <p class="ach-trecho">“{{ a.trecho }}”</p>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
       <div class="grid">
         <div>
           <span class="tele rotulo">sentimento</span>
@@ -315,6 +340,35 @@ import { NivelBadgeComponent } from './nivel-badge.component';
       ul.ev { margin: 0.35rem 0 0; padding-left: 1.15rem; color: var(--ink-muted); font-size: 0.88rem; }
       ul.ev.mono { font-family: var(--font-mono); font-size: 0.8rem; }
       ul.ev li { margin: 0.1rem 0; }
+
+      /* ----- Achados por trecho (rastreabilidade fina) ----- */
+      ul.achados { list-style: none; padding: 0; margin: 0.5rem 0 0; }
+      ul.achados > li { padding: 0.55rem 0; border-top: 1px solid var(--line); }
+      ul.achados > li:first-child { border-top: none; }
+      .ach-head { display: flex; align-items: baseline; gap: 0.5rem; }
+      .ach-fonte {
+        font-family: var(--font-mono);
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--ink-muted);
+        background: var(--surface-sunken);
+        border-radius: var(--radius-pill);
+        padding: 0.12rem 0.5rem;
+      }
+      .ach-cat { font-weight: 600; color: var(--ink); }
+      .ach-score {
+        margin-left: auto;
+        font-weight: 600;
+        padding: 0.05rem 0.45rem;
+        border-radius: var(--radius-pill);
+        color: var(--ink-muted);
+        background: var(--surface-sunken);
+      }
+      .ach-score.cs-baixo { color: var(--sev-baixo); background: var(--sev-baixo-wash); }
+      .ach-score.cs-medio { color: var(--sev-medio); background: var(--sev-medio-wash); }
+      .ach-score.cs-alto  { color: var(--sev-alto);  background: var(--sev-alto-wash); }
+      .ach-trecho { margin: 0.3rem 0 0; color: var(--ink-muted); font-size: 0.9rem; font-style: italic; }
 
       .doc {
         white-space: pre-wrap;
