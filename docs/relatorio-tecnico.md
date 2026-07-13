@@ -49,6 +49,10 @@ alerta único. Endpoints: `/api/text/analyze`, `/api/audio/analyze`, `/api/video
 `/api/laudo/analyze` e `/api/fusion/analyze` (texto + vídeo + laudo juntos). Tudo roda
 **100% local** por padrão; a nuvem (AWS) é opcional.
 
+> `GET /api/video/anotado/{video_id}` é um **sub-recurso** (streaming do vídeo anotado
+> com rosto+emoção, gerado por um `/analyze` anterior) — não é uma rota de análise
+> adicional. Ver [decisoes-arquiteturais.md](decisoes-arquiteturais.md) §5c.
+
 ## 3. Modelos e técnicas por tipo de dado
 
 | Modalidade | Técnica / Modelo                          | Biblioteca            | Local? |
@@ -135,6 +139,24 @@ O endpoint `/api/video/analyze` é um analisador **multimodal** do mesmo arquivo
 de uma (lib ausente, sem rosto, sem trilha) não derruba as demais. **Nenhum diagnóstico:**
 pose e emoção são categorias de severidade **média** (não críticas), só indícios para a equipe.
 
+## 4d. Painel de emoção: hexágono e vídeo anotado
+
+Quando `EMOTION_BACKEND=local` e o arquivo é **vídeo**, `POST /api/video/analyze` (e a
+fusão, quando há vídeo entre as entradas) devolve também o bloco `emocao_video` embutido
+na resposta:
+
+- **Perfil (hexágono):** intensidade média de 6 emoções — medo, tristeza, raiva, aversão,
+  surpresa, neutro — nos frames em que houve rosto (0 a 1 por eixo).
+- **Timeline:** emoção dominante por frame amostrado, com o instante em segundos.
+- **`dominante_geral`:** emoção que mais pesou no vídeo inteiro.
+- **Vídeo anotado (URL):** MP4 com a caixa do rosto e o rótulo da emoção desenhados
+  frame a frame (`cv2.rectangle`/`cv2.putText`), servido por
+  `GET /api/video/anotado/{video_id}`.
+
+Esse painel é gerado pela **mesma passada** do DeepFace que produz a categoria de risco
+`sinal_emocional_negativo` (ver [decisoes-arquiteturais.md](decisoes-arquiteturais.md)
+§5c) — não há uma segunda inferência para montar o gráfico.
+
 ## 5. Categorias de risco e regra de fusão
 
 Categorias monitoradas: `depressao_pos_parto`, `ansiedade`, `violencia_domestica`,
@@ -152,6 +174,15 @@ motivaram.
    qualquer indício → alerta **ALTO**.
 4. Caso geral: nível pelo maior score **ponderado pela severidade** da categoria
    (`alto ≥ 0,6`, `medio ≥ 0,3`, senão `baixo`).
+
+**Categorização por trecho (achados).** Além do agregado acima (que decide o alerta),
+`services/text/achados.py` quebra texto/transcrição/laudo em frases e classifica **cada
+frase** contra o léxico, gerando `achados: list[AchadoTrecho]` — um registro por
+(trecho × categoria) com `fonte`, `trecho`, `categoria`, `score` e `metadados`
+(ex.: `indice_trecho`). É aditivo (não muda o alerta) e existe para rastreabilidade fina:
+qual frase exata motivou cada indício, de qual modalidade. Detalhe da decisão (e por que
+não adotamos RAG/embeddings/LLM para isso) em
+[decisoes-arquiteturais.md](decisoes-arquiteturais.md) §5d.
 
 ## 6. Resultados obtidos e exemplos (saídas reais)
 
@@ -206,6 +237,16 @@ trilha (MoviePy), transcreve (`recognize_google`) e roda o NLP:
 É o exemplo multimodal mais completo: **um só arquivo** exercitando fala→NLP + emoção +
 pose + objeto, convergindo num alerta único, priorizado e rastreável.
 
+> **Paridade com a fusão (correção aplicada):** esse mesmo resultado (trilha → NLP →
+> `violencia_domestica` crítica → ALTO) hoje também é alcançado via
+> `/api/fusion/analyze` quando o vídeo é uma das entradas. Antes, a fusão **não**
+> transcrevia a trilha do próprio vídeo — um risco só audível na fala podia então
+> desaparecer na fusão, produzindo um nível **mais fraco** que a análise isolada do
+> mesmo arquivo (o oposto do princípio de corroboração da fusão). Corrigido: a fusão
+> agora repassa `transcription`/`nlp`/`transcrever_audio` ao analisar o(s) visual(is) e
+> soma essas categorias à modalidade `audio` (o `audio_arquivo` dedicado, quando
+> presente, tem prioridade na transcrição exibida).
+
 **Laudo** (smoke real do `LocalOcrAdapter` no PDF sintético `laudo_exemplo.pdf`):
 
 - OCR: `pdfplumber`, 1 página, sem precisar de OCR de imagem.
@@ -240,7 +281,7 @@ testes automatizados.
   cobrança**) → o `NlpPort` cai no `LocalNlpAdapter` sem perda de função. **Prova de
   degradação graciosa** do padrão ports/adapters, validada contra a AWS real.
 
-**Testes:** 30 casos automatizados passando (`pytest backend/tests`).
+**Testes:** 54 casos automatizados passando (`pytest backend/tests`).
 
 ## 7. Conformidade e limitações
 

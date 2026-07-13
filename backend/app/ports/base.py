@@ -70,6 +70,24 @@ class DeteccaoCategoria:
 
 
 @dataclass
+class AchadoTrecho:
+    """
+    Um indicio de risco localizado num TRECHO especifico de uma fonte (nao no
+    documento/audio inteiro). Complementa DeteccaoCategoria (que e o agregado
+    por categoria usado no alerta) com rastreabilidade fina: qual pedaco de
+    texto motivou o indicio, de qual fonte ele veio e em que posicao.
+
+    Nao substitui a fusao/alerta (que continua usando o score agregado); e um
+    registro auxiliar para auditoria e para o relatorio tecnico.
+    """
+    fonte: str                   # "texto" | "audio" | "laudo" | "video" | "pose" | "emocao"
+    trecho: str                  # conteudo (frase) que motivou o indicio
+    categoria: str                # categoria de risco detectada
+    score: float                  # 0.0 .. 1.0
+    metadados: dict = field(default_factory=dict)  # ex.: {"indice_trecho": 2}
+
+
+@dataclass
 class DeteccaoVisual:
     """Uma deteccao de objeto em um frame de video/imagem (YOLOv8)."""
     classe: str                  # nome da classe COCO (ex.: "knife", "scissors")
@@ -209,6 +227,12 @@ class PosePort(ABC):
 
 class EmotionPort(ABC):
     """Analise de EMOCAO facial em video/imagem (DeepFace)."""
+
+    # Capacidade opcional: quando True, o pipeline usa ``anotar_video_emocoes``
+    # (video anotado + hexagono) como PASSADA UNICA para video, e dela mesma
+    # deriva a categoria de risco (sem chamar ``analisar`` de novo). Adapters
+    # sem essa capacidade (ex.: mock) seguem usando ``analisar`` normalmente.
+    suporta_anotacao_video: bool = False
 
     @abstractmethod
     def analisar(self, caminho: str, amostragem: int = 15) -> EmotionAnalysisResult:

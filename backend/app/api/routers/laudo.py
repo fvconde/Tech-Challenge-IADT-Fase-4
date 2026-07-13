@@ -68,6 +68,7 @@ async def analisar(
     return fundir(
         categorias_laudo=resultado.categorias,
         nlp_laudo=resultado.nlp,
+        achados=resultado.achados,
         texto_documento=resultado.ocr.texto,
         resumo=resultado.resumo,
         backend_ocr=resultado.ocr.backend,

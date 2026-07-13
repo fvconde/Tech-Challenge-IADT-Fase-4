@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from backend.app.ports.base import (
+    AchadoTrecho,
     DeteccaoCategoria,
     NlpPort,
     NlpResult,
@@ -28,6 +29,7 @@ from backend.app.ports.base import (
     StoragePort,
     SummarizerPort,
 )
+from backend.app.services.text.achados import detectar_achados
 from backend.app.services.text.nlp import extrair_categorias_e_nlp
 
 logger = logging.getLogger(__name__)
@@ -40,6 +42,7 @@ class ResultadoLaudo:
     categorias: list[DeteccaoCategoria]
     nlp: NlpResult
     resumo: str
+    achados: list[AchadoTrecho]
 
 
 def analisar_laudo(
@@ -75,9 +78,16 @@ def analisar_laudo(
     # 3) analise de risco (reusa o mesmo lexico/classificador do texto)
     categorias, nlp_result = extrair_categorias_e_nlp(texto, nlp)
 
+    # 3b) categorizacao por trecho (chunk), complementar ao agregado acima
+    achados = detectar_achados(texto, "laudo")
+
     # 4) resumo (so se houver texto suficiente)
     resumo = summarizer.resumir(texto) if texto.strip() else ""
 
     return ResultadoLaudo(
-        ocr=resultado_ocr, categorias=categorias, nlp=nlp_result, resumo=resumo
+        ocr=resultado_ocr,
+        categorias=categorias,
+        nlp=nlp_result,
+        resumo=resumo,
+        achados=achados,
     )

@@ -127,6 +127,81 @@ Port (local + mock), **opt-in e desligadas por padrão**.
   `/api/video/analyze` com `POSE_BACKEND=local`/`EMOTION_BACKEND=local` devolve
   `modalidades: ["video","pose","emocao"]` num único alerta.
 
+### 5c. Endpoint único de vídeo + passada única de emoção (consolidação)
+
+**Decisão:** `POST /api/video/emotions` foi **removido**. `POST /api/video/analyze`
+passou a ser o **único** ponto de entrada de vídeo/imagem — orquestra internamente YOLO +
+pose + emoção + trilha de áudio e devolve tudo num único `AnaliseRiscoResponse`,
+incluindo (quando aplicável) o painel `emocao_video` (hexágono + vídeo anotado; ver
+relatorio-tecnico.md §4d). O antigo endpoint obrigava o frontend a chamar duas rotas e
+costurar o resultado no mesmo card — separação de responsabilidade desnecessária, já que
+as duas rotas analisavam o mesmo arquivo.
+
+- **Decisão de design (capacidade no port, não leitura de settings):** em vez de o
+  pipeline checar `settings.emotion_backend` para decidir se anota o vídeo, o
+  `EmotionPort` ganhou uma capacidade declarada — `suporta_anotacao_video: bool = False`
+  na interface, `True` só em `LocalEmotionAdapter`. O pipeline pergunta ao **adapter
+  injetado**, não ao settings global. Isso preserva o padrão de DI da §3: os testes
+  continuam controlando o comportamento via `dependency_overrides` (injetando
+  `MockEmotionAdapter`) sem precisar sincronizar com o `.env` — se a decisão fosse por
+  settings, um `.env` local com `EMOTION_BACKEND=local` quebraria silenciosamente os
+  testes que substituem o adapter mas não o settings.
+- **Passada única do DeepFace:** antes, o risco (`EmotionPort.analisar`) e o painel
+  (`anotar_video_emocoes`) rodavam o modelo **separadamente** (2× por vídeo). Agora uma
+  única chamada a `anotar_video_emocoes` gera as detecções brutas, das quais tanto a
+  categoria `sinal_emocional_negativo` quanto o painel são derivados — metade do custo de
+  inferência, mesmo resultado.
+- **Sub-recurso de streaming:** `GET /api/video/anotado/{video_id}` (antes
+  `GET /api/video/emotions/{video_id}`) serve o MP4 anotado gerado. Não é uma rota de
+  análise — é um arquivo já processado, por isso continua existindo separado do
+  `/analyze`.
+- **Imagem continua sendo o mesmo endpoint que vídeo:** `/api/video/analyze` sempre
+  aceitou `.jpg/.png` além de `.mp4/...`; a anotação (hexágono/vídeo) só se aplica a
+  vídeo (precisa de múltiplos frames) — para imagem, a emoção segue pelo `EmotionPort`
+  normal, como detecção de um frame só.
+
+### 5d. Categorização por trecho (achados) e por que não adotamos RAG/agente
+
+**Contexto:** ao discutir com o professor como somar dados de fontes diversas (áudio,
+vídeo, texto, PDF) e como categorizá-los, a orientação foi: não "somar" tudo de forma
+direta, e sim ter um pipeline extração → normalização → categorização, **quebrando o
+conteúdo em trechos menores** (chunks) e classificando cada trecho, não o arquivo
+inteiro.
+
+- **O que já existia:** a fusão (`services/fusion`) já convertia cada modalidade para o
+  mesmo tipo comum `DeteccaoCategoria` (categoria + score + evidências) antes de
+  combinar — ou seja, já não "somava" texto bruto. A lacuna era a **granularidade**: o
+  texto/áudio/laudo eram varridos como **um bloco só**; `evidencias` guardava só o termo
+  isolado, sem o trecho nem a posição.
+- **O que foi adicionado:** `services/text/achados.py` segmenta texto/transcrição/laudo
+  em frases (`segmentar`) e casa o léxico de risco **frase a frase** (`detectar_achados`),
+  gerando um registro por trecho — `AchadoTrecho(fonte, trecho, categoria, score,
+  metadados)` no domínio, `AchadoSchema` na API, exposto em
+  `AnaliseRiscoResponse.achados`. É o mesmo formato normalizado sugerido pelo professor
+  (fonte + conteúdo + categoria + confiança + metadados de rastreabilidade), aditivo —
+  não substitui `categorias_risco` (o agregado que decide o alerta) nem exige nenhuma
+  dependência nova (reusa o léxico já existente, 100% local).
+- **Vídeo/pose/emoção já tinham granularidade equivalente** por frame (`frame` em cada
+  detecção), então o gap era só em texto/áudio/laudo.
+
+**Por que NÃO adotamos RAG, embeddings, vector store, roteador/agente ou LLM** (também
+sugeridos pelo professor para o caso de fontes tratarem de assuntos diferentes):
+
+- Essa parte do conselho pressupõe um **assistente de perguntas e respostas** ("depois,
+  dependendo da pergunta do usuário, use um roteador para decidir qual base consultar").
+  O desafio não tem essa etapa: a saída do sistema é um **alerta para a equipe médica**,
+  não uma resposta a uma consulta em linguagem natural.
+- Um LLM (Bedrock) consome **créditos AWS finitos** (restrição não-negociável do
+  CLAUDE.md — nuvem só na demo final, poucas chamadas) e adicionaria risco de
+  infraestrutura perto do prazo (28/07).
+- A **taxonomia fixa de risco** (`depressao_pos_parto`, `ansiedade`,
+  `violencia_domestica`, `fadiga_hormonal` + as categorias de vídeo) já cumpre o papel de
+  "agrupar por tema": cada achado carrega sua categoria; fontes com categorias diferentes
+  simplesmente coexistem na lista combinada (sem forçar uma categoria única), e só há
+  boost quando a **mesma** categoria é corroborada por 2+ modalidades
+  (`BOOST_CORROBORACAO`, `alerts.py`). Isso já resolve, de forma simples e auditável, a
+  preocupação de "não misturar assuntos diferentes".
+
 ### Falso positivo conhecido do léxico (limitação honesta)
 
 A detecção de risco por **léxico** (`services/text/risk_lexicon.py`) é proposital —

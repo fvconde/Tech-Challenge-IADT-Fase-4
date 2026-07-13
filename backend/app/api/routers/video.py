@@ -1,8 +1,9 @@
-"""Endpoints de analise de VIDEO/IMAGEM (YOLOv8)."""
+"""Endpoint UNICO de analise de VIDEO/IMAGEM (YOLOv8 + pose + emocao + trilha de audio)."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
+from fastapi.responses import FileResponse
 
 from backend.app.core.config import get_settings
 from backend.app.models.schemas import AnaliseRiscoResponse
@@ -23,6 +24,7 @@ from backend.app.ports.factory import (
     get_video,
 )
 from backend.app.services.fusion.multimodal import fundir
+from backend.app.services.video import anotados
 from backend.app.services.video.pipeline import analisar_video
 
 router = APIRouter(prefix="/api/video", tags=["video"])
@@ -57,7 +59,7 @@ def status() -> dict:
 @router.post(
     "/analyze",
     response_model=AnaliseRiscoResponse,
-    summary="Analisar vídeo/imagem (YOLOv8)",
+    summary="Analisar vídeo/imagem (YOLOv8 + pose + emoção + trilha de áudio)",
 )
 async def analisar(
     arquivo: UploadFile = File(..., description="Imagem ou video clinico de exemplo"),
@@ -72,7 +74,9 @@ async def analisar(
     Analise MULTIMODAL de um video/imagem, convergindo num unico alerta:
       - YOLOv8 (objetos, classes-foco configuraveis) -> risco visual;
       - MediaPipe (pose/gestos) quando POSE_BACKEND=local;
-      - DeepFace (emocao facial) quando EMOTION_BACKEND=local;
+      - DeepFace (emocao facial) quando EMOTION_BACKEND=local -- para VIDEO, numa
+        UNICA passada, tambem gera o video anotado + hexagono (``emocao_video``
+        na resposta) e o serve via GET /api/video/anotado/{id};
       - trilha de audio (moviepy -> transcricao -> NLP) quando VIDEO_TRANSCREVER_AUDIO=true.
 
     Tudo 100% local e opt-in: por padrao (mocks/flag off) o comportamento e o mesmo
@@ -106,7 +110,7 @@ async def analisar(
         idioma=s.transcription_language,
     )
 
-    # resposta unificada (video + pose/emocao/trilha quando ativos)
+    # resposta unificada (video + pose/emocao/painel/trilha quando ativos)
     return fundir(
         categorias_video=bundle.categorias_video,
         video_result=bundle.video_result,
@@ -114,8 +118,26 @@ async def analisar(
         pose_result=bundle.pose_result,
         categorias_emocao=bundle.categorias_emocao,
         emotion_result=bundle.emotion_result,
+        emocao_panel=bundle.emocao_panel,
         categorias_audio=bundle.categorias_texto,
         nlp_result=bundle.nlp_result,
         transcricao=bundle.transcricao,
         backend_transcricao=bundle.backend_transcricao,
+    )
+
+
+@router.get(
+    "/anotado/{video_id}",
+    summary="Baixar/reproduzir o vídeo anotado com emoções (MP4/H.264)",
+)
+def baixar_anotado(video_id: str) -> FileResponse:
+    """Streaming do vídeo anotado gerado por POST /api/video/analyze (emocao_video)."""
+    caminho = anotados.caminho_de(video_id)
+    if caminho is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Vídeo anotado não encontrado (pode ter expirado ou o servidor reiniciou).",
+        )
+    return FileResponse(
+        str(caminho), media_type="video/mp4", filename=f"anotado_{video_id}.mp4"
     )

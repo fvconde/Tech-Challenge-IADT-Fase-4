@@ -30,6 +30,8 @@ logger = logging.getLogger(__name__)
 class LocalEmotionAdapter(EmotionPort):
     """Analise de emocao facial com DeepFace, rodando localmente."""
 
+    suporta_anotacao_video = True
+
     def analisar(self, caminho: str, amostragem: int = 15) -> EmotionAnalysisResult:
         try:
             import cv2  # import lazy
