@@ -210,6 +210,12 @@ class PosePort(ABC):
 class EmotionPort(ABC):
     """Analise de EMOCAO facial em video/imagem (DeepFace)."""
 
+    # Capacidade opcional: quando True, o pipeline usa ``anotar_video_emocoes``
+    # (video anotado + hexagono) como PASSADA UNICA para video, e dela mesma
+    # deriva a categoria de risco (sem chamar ``analisar`` de novo). Adapters
+    # sem essa capacidade (ex.: mock) seguem usando ``analisar`` normalmente.
+    suporta_anotacao_video: bool = False
+
     @abstractmethod
     def analisar(self, caminho: str, amostragem: int = 15) -> EmotionAnalysisResult:
         """

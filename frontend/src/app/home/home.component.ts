@@ -119,12 +119,27 @@ export class HomeComponent {
       );
       return;
     }
-    this.executar(
-      'fusao',
-      '🚨 Alerta multimodal (fusão)',
-      true,
-      this.api.analisarFusao({ texto: this.texto, audio, video, imagem, laudo }),
-    );
+
+    // UM único card recebe TANTO o alerta quanto as emoções por frame.
+    const id = ++this.contador;
+    this.setCarregando('fusao', true);
+    this.resultados.update((lista) => [
+      { id, titulo: '🚨 Alerta multimodal (fusão)', destaque: true, carregando: true },
+      ...lista,
+    ]);
+
+    // Alerta multimodal (o painel de emoções, quando há vídeo + DeepFace, já vem
+    // embutido em resp.emocao_video — não precisa de uma segunda chamada).
+    this.api.analisarFusao({ texto: this.texto, audio, video, imagem, laudo }).subscribe({
+      next: (resp) => {
+        this.setCarregando('fusao', false);
+        this.patch(id, { resp, carregando: false });
+      },
+      error: (err) => {
+        this.setCarregando('fusao', false);
+        this.patch(id, { erro: this.msgErro(err), carregando: false });
+      },
+    });
   }
 
   limpar(): void {

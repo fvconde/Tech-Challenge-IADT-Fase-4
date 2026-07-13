@@ -204,6 +204,18 @@ button[disabled] {
   opacity: 0.55;
   cursor: progress;
 }
+
+/* botão secundário dentro de um canal (ação adicional, menos proeminente) */
+button.secundario {
+  border-color: var(--chrome-line);
+  color: var(--chrome-ink);
+  font-weight: 500;
+  font-size: 0.82rem;
+}
+button.secundario:hover {
+  background: var(--chrome-2);
+  border-color: var(--chrome-ink-muted);
+}
 .grupo small {
   color: var(--chrome-ink-muted);
   font-size: 0.75rem;

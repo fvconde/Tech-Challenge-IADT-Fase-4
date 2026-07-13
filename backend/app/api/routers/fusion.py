@@ -113,7 +113,7 @@ def _merge_visuais(bundles: list):
     (ex.: tesoura -> objeto_suspeito), senao a primeira anotacao disponivel.
     """
     if not bundles:
-        return None, None, None, None, None, None
+        return None, None, None, None, None, None, None
 
     deteccoes = []
     frames = 0
@@ -165,7 +165,19 @@ def _merge_visuais(bundles: list):
         EmotionAnalysisResult(emocoes=emocoes, backend=emo_backend) if emocoes else None
     )
 
-    return cats_video, video_result, cats_pose, pose_result, cats_emo, emotion_result
+    # PAINEL de emocao (hexagono + video anotado): pega o primeiro disponivel
+    # (tipicamente so o video gera painel; imagem nao passa por anotacao).
+    emocao_panel = next((b.emocao_panel for b in bundles if b.emocao_panel), None)
+
+    return (
+        cats_video,
+        video_result,
+        cats_pose,
+        pose_result,
+        cats_emo,
+        emotion_result,
+        emocao_panel,
+    )
 
 
 @router.post(
@@ -266,6 +278,10 @@ async def analisar(
                 storage=storage,
                 pose=pose,
                 emotion=emotion,
+                transcription=transcription,
+                nlp=nlp,
+                transcrever_audio=s.video_transcrever_audio,
+                idioma=s.transcription_language,
             )
         )
     (
@@ -275,7 +291,19 @@ async def analisar(
         pose_result,
         categorias_emocao,
         emotion_result,
+        emocao_panel,
     ) = _merge_visuais(bundles)
+
+    # trilha de audio do(s) proprio(s) visual(is) -> modalidade "audio" (paridade
+    # com /api/video/analyze: sem isso, um risco so audivel no video some na fusao).
+    for b in bundles:
+        if b.categorias_texto is None:
+            continue  # imagem, sem fala, ou falha isolada (trilha ausente)
+        categorias_audio = (categorias_audio or []) + b.categorias_texto
+        nlp_audio = _combinar_nlp(nlp_audio, b.nlp_result)
+        if transcricao is None and b.transcricao:  # prioriza o audio_arquivo dedicado
+            transcricao = b.transcricao
+            backend_transcricao = b.backend_transcricao
 
     # ----- modalidade laudo -----
     categorias_laudo = nlp_laudo = None
@@ -312,6 +340,7 @@ async def analisar(
         pose_result=pose_result,
         categorias_emocao=categorias_emocao,
         emotion_result=emotion_result,
+        emocao_panel=emocao_panel,
         categorias_laudo=categorias_laudo,
         nlp_laudo=nlp_laudo,
         transcricao=transcricao,

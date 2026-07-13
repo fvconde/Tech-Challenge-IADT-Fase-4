@@ -127,6 +127,39 @@ Port (local + mock), **opt-in e desligadas por padrão**.
   `/api/video/analyze` com `POSE_BACKEND=local`/`EMOTION_BACKEND=local` devolve
   `modalidades: ["video","pose","emocao"]` num único alerta.
 
+### 5c. Endpoint único de vídeo + passada única de emoção (consolidação)
+
+**Decisão:** `POST /api/video/emotions` foi **removido**. `POST /api/video/analyze`
+passou a ser o **único** ponto de entrada de vídeo/imagem — orquestra internamente YOLO +
+pose + emoção + trilha de áudio e devolve tudo num único `AnaliseRiscoResponse`,
+incluindo (quando aplicável) o painel `emocao_video` (hexágono + vídeo anotado; ver
+relatorio-tecnico.md §4d). O antigo endpoint obrigava o frontend a chamar duas rotas e
+costurar o resultado no mesmo card — separação de responsabilidade desnecessária, já que
+as duas rotas analisavam o mesmo arquivo.
+
+- **Decisão de design (capacidade no port, não leitura de settings):** em vez de o
+  pipeline checar `settings.emotion_backend` para decidir se anota o vídeo, o
+  `EmotionPort` ganhou uma capacidade declarada — `suporta_anotacao_video: bool = False`
+  na interface, `True` só em `LocalEmotionAdapter`. O pipeline pergunta ao **adapter
+  injetado**, não ao settings global. Isso preserva o padrão de DI da §3: os testes
+  continuam controlando o comportamento via `dependency_overrides` (injetando
+  `MockEmotionAdapter`) sem precisar sincronizar com o `.env` — se a decisão fosse por
+  settings, um `.env` local com `EMOTION_BACKEND=local` quebraria silenciosamente os
+  testes que substituem o adapter mas não o settings.
+- **Passada única do DeepFace:** antes, o risco (`EmotionPort.analisar`) e o painel
+  (`anotar_video_emocoes`) rodavam o modelo **separadamente** (2× por vídeo). Agora uma
+  única chamada a `anotar_video_emocoes` gera as detecções brutas, das quais tanto a
+  categoria `sinal_emocional_negativo` quanto o painel são derivados — metade do custo de
+  inferência, mesmo resultado.
+- **Sub-recurso de streaming:** `GET /api/video/anotado/{video_id}` (antes
+  `GET /api/video/emotions/{video_id}`) serve o MP4 anotado gerado. Não é uma rota de
+  análise — é um arquivo já processado, por isso continua existindo separado do
+  `/analyze`.
+- **Imagem continua sendo o mesmo endpoint que vídeo:** `/api/video/analyze` sempre
+  aceitou `.jpg/.png` além de `.mp4/...`; a anotação (hexágono/vídeo) só se aplica a
+  vídeo (precisa de múltiplos frames) — para imagem, a emoção segue pelo `EmotionPort`
+  normal, como detecção de um frame só.
+
 ### Falso positivo conhecido do léxico (limitação honesta)
 
 A detecção de risco por **léxico** (`services/text/risk_lexicon.py`) é proposital —

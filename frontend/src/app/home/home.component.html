@@ -53,6 +53,10 @@
         Analisar vídeo
       }
     </button>
+    <small class="dica">
+      Com DeepFace ativo, o resultado já inclui o hexágono e o vídeo anotado
+      por frame (rosto + emoção).
+    </small>
   </section>
 
   <!-- IMAGEM -->
@@ -127,7 +131,11 @@
           <p>{{ item.erro }}</p>
         </div>
       } @else if (item.resp) {
-        <app-alerta-card [resp]="item.resp" [titulo]="item.titulo" [destaque]="item.destaque" />
+        <app-alerta-card
+          [resp]="item.resp"
+          [titulo]="item.titulo"
+          [destaque]="item.destaque"
+        />
       }
     </div>
   }

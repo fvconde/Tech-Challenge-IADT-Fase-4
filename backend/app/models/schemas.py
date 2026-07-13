@@ -80,6 +80,46 @@ class DeteccaoEmocaoSchema(BaseModel):
     frame: int = Field(description="Indice do frame (0 para imagem)")
 
 
+# ------- Anotacao de emocao em VIDEO (grafico hexagono + video anotado) -------
+class EmocaoPerfilSchema(BaseModel):
+    """Um eixo do hexagono: intensidade media de uma emocao no video (0..1)."""
+
+    emocao: str = Field(description="Rótulo PT da emoção (eixo do hexágono)")
+    valor: float = Field(description="0.0 a 1.0 - intensidade média nos frames com rosto")
+    negativa: bool = Field(description="True para emoções de valência negativa")
+
+
+class EmocaoFrameSchema(BaseModel):
+    """Emocao dominante de um frame amostrado (para a faixa/timeline)."""
+
+    frame: int = Field(description="Índice do frame amostrado")
+    tempo_s: float = Field(description="Instante aproximado no vídeo (segundos)")
+    emocao: str = Field(description="Rótulo PT da emoção dominante do frame")
+    score: float = Field(description="0.0 a 1.0 - confiança da emoção dominante")
+
+
+class EmocaoVideoPanel(BaseModel):
+    """Painel de emoção do vídeo: perfil (hexágono) + timeline + URL do vídeo anotado.
+
+    Embutido em ``AnaliseRiscoResponse.emocao_video`` quando EMOTION_BACKEND=local
+    e o arquivo analisado é um vídeo (gerado na MESMA passada do DeepFace que
+    produz a categoria de risco 'sinal_emocional_negativo').
+    """
+
+    video_id: str
+    video_url: str = Field(
+        description="Caminho relativo para baixar/reproduzir o vídeo anotado (MP4/H.264)."
+    )
+    perfil: list[EmocaoPerfilSchema] = Field(default_factory=list)
+    timeline: list[EmocaoFrameSchema] = Field(default_factory=list)
+    frames_analisados: int = Field(description="Frames em que o DeepFace rodou (amostrados)")
+    frames_total: int = Field(description="Total de frames escritos no vídeo anotado")
+    frames_com_rosto: int = Field(description="Frames amostrados em que houve rosto")
+    fps: float
+    dominante_geral: str = Field(description="Emoção dominante no vídeo inteiro (PT)")
+    backend: str = "local_deepface"
+
+
 # --------------------------- Response ---------------------------
 class AnaliseRiscoResponse(BaseModel):
     """Resposta unificada de analise (texto, audio, video ou multimodal)."""
@@ -107,6 +147,8 @@ class AnaliseRiscoResponse(BaseModel):
     deteccoes_pose: list[DeteccaoPoseSchema] | None = None
     # detalhes de emocao (apenas quando a analise de emocao roda - EMOTION_BACKEND=local)
     deteccoes_emocao: list[DeteccaoEmocaoSchema] | None = None
+    # painel de emocao (hexagono + video anotado): so quando ha VIDEO + EMOTION_BACKEND=local
+    emocao_video: EmocaoVideoPanel | None = None
     # detalhes de laudo/documento (apenas quando ha PDF)
     texto_documento: str | None = Field(
         default=None, description="Texto extraido do PDF de laudo."

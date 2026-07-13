@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
-import { AnaliseRiscoResponse } from '../core/models';
+import { AnaliseRiscoResponse, CategoriaRisco } from '../core/models';
+import { EmocaoVideoComponent } from './emocao-video.component';
 import { NivelBadgeComponent } from './nivel-badge.component';
 
 /**
@@ -11,7 +12,7 @@ import { NivelBadgeComponent } from './nivel-badge.component';
 @Component({
   selector: 'app-alerta-card',
   standalone: true,
-  imports: [NivelBadgeComponent],
+  imports: [NivelBadgeComponent, EmocaoVideoComponent],
   template: `
     <article
       class="card"
@@ -61,11 +62,11 @@ import { NivelBadgeComponent } from './nivel-badge.component';
         <p>{{ resp.acao_recomendada }}</p>
       </div>
 
-      @if (resp.categorias_risco.length) {
+      @if (categoriasVisiveis.length) {
         <div class="bloco">
           <span class="tele rotulo">Categorias de risco</span>
           <ul class="cats">
-            @for (c of resp.categorias_risco; track c.categoria) {
+            @for (c of categoriasVisiveis; track c.categoria) {
               <li>
                 <div class="cat-head">
                   <span class="cat-nome">{{ c.categoria }}</span>
@@ -74,7 +75,7 @@ import { NivelBadgeComponent } from './nivel-badge.component';
                     [class.cs-baixo]="c.score < 0.3"
                     [class.cs-medio]="c.score >= 0.3 && c.score < 0.6"
                     [class.cs-alto]="c.score >= 0.6"
-                    >{{ c.score.toFixed(2) }}</span>
+                    >{{ pct(c.score) }}</span>
                 </div>
                 @if (c.evidencias.length) {
                   <ul class="ev">
@@ -85,14 +86,23 @@ import { NivelBadgeComponent } from './nivel-badge.component';
             }
           </ul>
         </div>
-      } @else {
+      } @else if (!mostrarEmocao) {
         <p class="muted">Nenhuma categoria de risco identificada.</p>
+      }
+
+      <!-- Sinais emocionais no vídeo: o hexágono + vídeo anotado + timeline
+           SUBSTITUEM a lista textual de "sinal_emocional_negativo" (filtrada
+           acima) — o gráfico representa o mesmo indício de forma visual. -->
+      @if (mostrarEmocao) {
+        <div class="bloco emocao-bloco">
+          <app-emocao-video [resp]="resp.emocao_video!" [embutido]="true" />
+        </div>
       }
 
       <div class="grid">
         <div>
           <span class="tele rotulo">sentimento</span>
-          {{ resp.sentimento.rotulo }} <span class="val">({{ resp.sentimento.score.toFixed(2) }})</span>
+          {{ resp.sentimento.rotulo }} <span class="val">({{ pct(resp.sentimento.score) }})</span>
         </div>
         @if (resp.frames_analisados != null) {
           <div><span class="tele rotulo">frames analisados</span> <span class="val">{{ resp.frames_analisados }}</span></div>
@@ -120,7 +130,7 @@ import { NivelBadgeComponent } from './nivel-badge.component';
           <span class="tele rotulo">detecções (vídeo)</span>
           <ul class="ev mono">
             @for (d of resp.deteccoes_video; track $index) {
-              <li>{{ d.classe }} — conf {{ d.confianca.toFixed(2) }} (frame {{ d.frame }})</li>
+              <li>{{ d.classe }} — conf {{ pct(d.confianca) }} (frame {{ d.frame }})</li>
             }
           </ul>
         </div>
@@ -340,6 +350,8 @@ import { NivelBadgeComponent } from './nivel-badge.component';
       }
       details.bloco[open] summary { margin-bottom: 0.5rem; }
       .anotada { display: block; max-width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--line); margin-top: 0.45rem; }
+      /* Separador sutil acima do painel de emoções embutido. */
+      .emocao-bloco { border-top: 1px solid var(--line); padding-top: 0.85rem; }
       .muted { color: var(--ink-faint); font-style: italic; }
 
       /* ----- Rodapé + selo "não é diagnóstico" ----- */
@@ -371,4 +383,25 @@ export class AlertaCardComponent {
   @Input({ required: true }) resp!: AnaliseRiscoResponse;
   @Input() titulo = 'Resultado';
   @Input() destaque = false;
+
+  /** Há painel de emoções (hexágono + vídeo anotado) para exibir dentro do alerta. */
+  get mostrarEmocao(): boolean {
+    return !!this.resp.emocao_video;
+  }
+
+  /**
+   * Categorias mostradas como lista textual. Quando há o painel de emoções, a
+   * categoria 'sinal_emocional_negativo' é OMITIDA — o hexágono a substitui
+   * visualmente (pedido: "substitua a lista sinal_emocional_negativo pelo gráfico").
+   */
+  get categoriasVisiveis(): CategoriaRisco[] {
+    if (!this.mostrarEmocao) return this.resp.categorias_risco;
+    return this.resp.categorias_risco.filter(
+      (c) => c.categoria !== 'sinal_emocional_negativo',
+    );
+  }
+
+  pct(valor: number): string {
+    return `${Math.round(valor * 100)}%`;
+  }
 }

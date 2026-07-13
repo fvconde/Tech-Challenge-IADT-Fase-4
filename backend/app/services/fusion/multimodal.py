@@ -21,6 +21,9 @@ from backend.app.models.schemas import (
     DeteccaoEmocaoSchema,
     DeteccaoPoseSchema,
     DeteccaoVisualSchema,
+    EmocaoFrameSchema,
+    EmocaoPerfilSchema,
+    EmocaoVideoPanel,
     EntidadeSchema,
     SentimentoSchema,
 )
@@ -34,6 +37,7 @@ from backend.app.ports.base import (
     VideoAnalysisResult,
 )
 from backend.app.services.fusion.alerts import avaliar_alerta, combinar_categorias
+from backend.app.services.video.pipeline import PainelEmocaoVideo
 
 # Sentimento neutro padrao (usado quando nao ha modalidade de texto).
 _SENTIMENTO_NEUTRO = SentimentResult(rotulo="neutro", score=0.0, backend="n/a")
@@ -71,6 +75,7 @@ def fundir(
     pose_result: PoseAnalysisResult | None = None,
     categorias_emocao: list[DeteccaoCategoria] | None = None,
     emotion_result: EmotionAnalysisResult | None = None,
+    emocao_panel: PainelEmocaoVideo | None = None,
     categorias_laudo: list[DeteccaoCategoria] | None = None,
     nlp_laudo: NlpResult | None = None,
     transcricao: str | None = None,
@@ -173,5 +178,28 @@ def fundir(
             for e in emotion_result.emocoes
         ]
         resposta.backend_emocao = emotion_result.backend
+
+    # anexa o painel de emocao (hexagono + video anotado), se houver
+    if emocao_panel is not None:
+        resposta.emocao_video = EmocaoVideoPanel(
+            video_id=emocao_panel.video_id,
+            video_url=emocao_panel.video_url,
+            perfil=[
+                EmocaoPerfilSchema(emocao=p.emocao, valor=p.valor, negativa=p.negativa)
+                for p in emocao_panel.perfil
+            ],
+            timeline=[
+                EmocaoFrameSchema(
+                    frame=f.frame, tempo_s=f.tempo_s, emocao=f.emocao, score=f.score
+                )
+                for f in emocao_panel.timeline
+            ],
+            frames_analisados=emocao_panel.frames_analisados,
+            frames_total=emocao_panel.frames_total,
+            frames_com_rosto=emocao_panel.frames_com_rosto,
+            fps=emocao_panel.fps,
+            dominante_geral=emocao_panel.dominante_geral,
+            backend=emocao_panel.backend,
+        )
 
     return resposta

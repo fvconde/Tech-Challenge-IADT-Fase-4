@@ -62,6 +62,12 @@ export class ApiService {
     return this.http.post<AnaliseRiscoResponse>(`${this.base}/api/fusion/analyze`, fd);
   }
 
+  // Monta a URL absoluta do vídeo anotado a partir do caminho relativo devolvido
+  // em AnaliseRiscoResponse.emocao_video.video_url (GET /api/video/anotado/{id}).
+  urlVideoAnotado(videoUrl: string): string {
+    return `${this.base}${videoUrl}`;
+  }
+
   // GET /api/video/status
   videoStatus(): Observable<VideoStatus> {
     return this.http.get<VideoStatus>(`${this.base}/api/video/status`);

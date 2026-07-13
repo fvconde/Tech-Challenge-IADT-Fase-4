@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 import tempfile
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -37,13 +38,39 @@ from backend.app.ports.base import (
     VideoAnalysisResult,
     VideoPort,
 )
+from backend.app.ports.video import EXTENSOES_IMAGEM
 from backend.app.services.audio.extract import extrair_audio_de_video
 from backend.app.services.text.nlp import extrair_categorias_e_nlp
+from backend.app.services.video import anotados
 from backend.app.services.video.emotion_rules import avaliar_risco_emocao
+from backend.app.services.video.emotion_video import (
+    FrameEmocao,
+    PerfilEmocao,
+    anotar_video_emocoes,
+)
 from backend.app.services.video.pose_rules import avaliar_risco_pose
 from backend.app.services.video.risk_rules import avaliar_risco_visual
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class PainelEmocaoVideo:
+    """Painel de emocao (hexagono + video anotado) para o router expor na resposta.
+
+    Gerado pela MESMA passada do DeepFace que produz 'categorias_emocao' (sem
+    rodar o modelo 2x): ver ``_rodar_anotacao_emocao``.
+    """
+    video_id: str
+    video_url: str
+    perfil: list[PerfilEmocao]
+    timeline: list[FrameEmocao]
+    frames_analisados: int
+    frames_total: int
+    frames_com_rosto: int
+    fps: float
+    dominante_geral: str
+    backend: str = "local_deepface"
 
 
 @dataclass
@@ -61,6 +88,7 @@ class VideoPipelineResult:
     categorias_pose: list[DeteccaoCategoria] | None = None
     emotion_result: EmotionAnalysisResult | None = None
     categorias_emocao: list[DeteccaoCategoria] | None = None
+    emocao_panel: PainelEmocaoVideo | None = None
     transcricao: str | None = None
     backend_transcricao: str | None = None
     nlp_result: NlpResult | None = None
@@ -89,6 +117,11 @@ def analisar_video(
     - pose/emotion (opcionais): so contribuem quando o adapter NAO e mock.
     - transcrever_audio: se True e houver transcription+nlp, extrai a trilha
       (moviepy), transcreve e roda o NLP -> categorias de texto.
+    - emotion: quando o adapter injetado tem ``suporta_anotacao_video=True``
+      (LocalEmotionAdapter/DeepFace) E o arquivo e VIDEO, roda uma UNICA passada
+      que gera o video anotado + hexagono E, dela mesma, deriva a categoria de
+      risco (sem chamar ``analisar`` de novo). Para imagem, ou qualquer outro
+      adapter (ex.: mock nos testes), usa ``EmotionPort.analisar`` normalmente.
     """
     # 1) (opcional) persistir o arquivo recebido
     if storage is not None:
@@ -115,11 +148,16 @@ def analisar_video(
         # 4) POSE (MediaPipe) -- so conta se o backend for real (nao mock)
         _rodar_pose(bundle, pose, caminho_tmp, amostragem)
 
-        # 5) EMOCAO (DeepFace) -- idem
-        _rodar_emocao(bundle, emotion, caminho_tmp, amostragem)
+        # 5) EMOCAO (DeepFace) -- video + adapter com suporte a anotacao: passada
+        # UNICA (risco + painel); imagem ou outro adapter: EmotionPort normal
+        e_video = Path(nome_arquivo).suffix.lower() not in EXTENSOES_IMAGEM
+        if e_video and emotion is not None and emotion.suporta_anotacao_video:
+            _rodar_anotacao_emocao(bundle, caminho_tmp, amostragem)
+        else:
+            _rodar_emocao(bundle, emotion, caminho_tmp, amostragem)
 
-        # 6) TRILHA DE AUDIO (moviepy -> transcricao -> NLP)
-        if transcrever_audio and transcription is not None and nlp is not None:
+        # 6) TRILHA DE AUDIO (moviepy -> transcricao -> NLP) -- so para VIDEO
+        if e_video and transcrever_audio and transcription is not None and nlp is not None:
             _rodar_trilha_audio(bundle, caminho_tmp, transcription, nlp, idioma)
     finally:
         try:
@@ -173,6 +211,49 @@ def _rodar_emocao(
         return  # nenhum rosto/emocao: modalidade ausente
     bundle.emotion_result = res
     bundle.categorias_emocao = avaliar_risco_emocao(res.emocoes)
+
+
+def _rodar_anotacao_emocao(
+    bundle: VideoPipelineResult, caminho: str, amostragem: int
+) -> None:
+    """
+    Roda a anotacao de emocao (DeepFace) em PASSADA UNICA: gera o video anotado
+    + hexagono (painel) e, das MESMAS deteccoes brutas, deriva a categoria de
+    risco -- sem chamar o EmotionPort de novo (isolada: falha nao propaga).
+
+    O painel fica anexado mesmo sem rosto (o frontend trata frames_com_rosto=0);
+    ja a modalidade 'emocao' (risco) so fica presente quando houve deteccao,
+    espelhando o comportamento de ``_rodar_emocao``.
+    """
+    video_id = uuid.uuid4().hex
+    try:
+        resultado = anotar_video_emocoes(
+            caminho, anotados.caminho_saida(video_id), amostragem=amostragem
+        )
+    except RuntimeError:
+        logger.warning("Anotacao de emocao falhou (ignorada).", exc_info=True)
+        return
+
+    video_url = anotados.registrar(video_id, Path(resultado.caminho_saida))
+    bundle.emocao_panel = PainelEmocaoVideo(
+        video_id=video_id,
+        video_url=video_url,
+        perfil=resultado.perfil,
+        timeline=resultado.timeline,
+        frames_analisados=resultado.frames_analisados,
+        frames_total=resultado.frames_total,
+        frames_com_rosto=resultado.frames_com_rosto,
+        fps=resultado.fps,
+        dominante_geral=resultado.dominante_geral,
+        backend=resultado.backend,
+    )
+    if resultado.deteccoes:
+        bundle.emotion_result = EmotionAnalysisResult(
+            emocoes=resultado.deteccoes,
+            frames_analisados=resultado.frames_analisados,
+            backend=resultado.backend,
+        )
+        bundle.categorias_emocao = avaliar_risco_emocao(resultado.deteccoes)
 
 
 def _rodar_trilha_audio(

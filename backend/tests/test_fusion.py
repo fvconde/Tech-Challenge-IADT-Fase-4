@@ -269,3 +269,41 @@ def test_fusion_somente_texto():
 def test_fusion_exige_ao_menos_uma_modalidade():
     r = client.post("/api/fusion/analyze", data={})
     assert r.status_code == 400
+
+
+def test_fusion_trilha_de_audio_do_video_flagra_risco(monkeypatch):
+    # Regressao: a fusao chamava analisar_video SEM transcrever a trilha de audio do
+    # video, entao um risco SO audivel na fala do video (sem deteccao visual) sumia na
+    # fusao -- ficando MAIS FRACA que o /api/video/analyze isolado (que transcreve).
+    # Aqui a trilha (mock) acusa violencia_domestica -> a fusao deve chegar em ALTO,
+    # igual ao endpoint isolado, com a modalidade 'audio' presente.
+    monkeypatch.setattr(
+        "backend.app.services.video.pipeline.extrair_audio_de_video",
+        lambda caminho_video: "fake.wav",
+    )
+
+    class _StubTranscription:
+        def transcrever(self, caminho, idioma="pt-BR"):
+            return TranscriptionResult(
+                texto="tenho medo dele ele me empurrou e me ameacou",
+                idioma=idioma,
+                backend="stub",
+            )
+
+    app.dependency_overrides[get_video] = lambda: MockVideoAdapter(deteccoes=[])
+    app.dependency_overrides[get_transcription] = lambda: _StubTranscription()
+    try:
+        r = client.post(
+            "/api/fusion/analyze",
+            files={"video_arquivo": ("clip.mp4", b"fake-video", "video/mp4")},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert r.status_code == 200
+    b = r.json()
+    assert "audio" in b["modalidades"]
+    cats = {c["categoria"] for c in b["categorias_risco"]}
+    assert "violencia_domestica" in cats
+    assert b["nivel_alerta"] == "alto"
+    assert b["transcricao"] == "tenho medo dele ele me empurrou e me ameacou"
